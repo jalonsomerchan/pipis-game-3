@@ -5,49 +5,28 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta
       name="description"
-      content="Gallinas vs Zorros, un juego móvil casual hecho con HTML5 Canvas y JavaScript."
+      content="¡Defiende a las Pipis!, un juego móvil casual hecho con HTML5 Canvas y JavaScript."
     />
     <meta name="theme-color" content="#120b08" />
 
-    <title>Gallinas vs Zorros</title>
+    <title>¡Defiende a las Pipis!</title>
 
     <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
   </head>
 
   <body>
     <div id="app" class="game-shell">
-      <header class="game-header" aria-live="polite">
-        <div class="brand-lockup">
-          <p class="eyebrow">Rescate de corral</p>
-          <h1>Gallinas vs Zorros</h1>
-        </div>
-
-        <dl class="stats-bar" aria-label="Estado de la partida">
-          <div>
-            <dt>Tiempo</dt>
-            <dd id="time">0:00</dd>
-          </div>
-          <div>
-            <dt>Gallinas</dt>
-            <dd id="chickens">0</dd>
-          </div>
-          <div>
-            <dt>Huevos</dt>
-            <dd id="eggs">0</dd>
-          </div>
-          <div>
-            <dt>Zorros</dt>
-            <dd id="foxes">0</dd>
-          </div>
-          <div>
-            <dt>Nivel</dt>
-            <dd id="level">-</dd>
-          </div>
-        </dl>
-      </header>
-
       <main class="game-stage">
-        <section class="phone-frame" aria-label="Juego Gallinas vs Zorros">
+        <section class="phone-frame" aria-label="Juego ¡Defiende a las Pipis!">
+          <button
+            id="pause-button"
+            class="pause-button"
+            type="button"
+            hidden
+            aria-label="Pausar partida"
+          >
+            Menú
+          </button>
           <canvas
             id="game-canvas"
             width="540"
@@ -64,14 +43,34 @@
 
             <section class="panel" data-panel="menu" hidden>
               <p class="eyebrow">Arcade táctil</p>
-              <h2>Defiende el establo</h2>
+              <h2>¡Defiende a las Pipis!</h2>
               <p>
                 Asusta zorros con un toque. Cuando aparezca un huevo, tócalo antes de que se enfríe
                 para que nazca una nueva gallina.
               </p>
               <div class="button-row">
                 <button id="play-button" class="primary-button" type="button">Jugar</button>
+                <button id="tutorial-button" class="secondary-button" type="button">
+                  Tutorial
+                </button>
                 <button id="share-button" class="secondary-button" type="button">Compartir</button>
+              </div>
+            </section>
+
+            <section class="panel" data-panel="tutorialDone" hidden>
+              <p class="eyebrow">Tutorial completado</p>
+              <h2>Ya puedes defenderlas</h2>
+              <p>
+                Ahora sabes lo importante: protege a tus Pipis, toca los zorros encima y no dejes
+                que los huevos se enfríen.
+              </p>
+              <div class="button-row">
+                <button id="tutorial-done-play-button" class="primary-button" type="button">
+                  Elegir nivel
+                </button>
+                <button id="tutorial-done-menu-button" class="secondary-button" type="button">
+                  Menú
+                </button>
               </div>
             </section>
 
@@ -95,12 +94,28 @@
 
             <section class="panel" data-panel="results" hidden>
               <p class="eyebrow">Fin de la partida</p>
-              <h2>El gallinero cayó</h2>
+              <h2>Las Pipis cayeron</h2>
               <p>Tiempo conseguido: <strong id="result-time">0:00</strong></p>
               <p>Mejor tiempo: <strong id="best-time">0:00</strong></p>
               <div class="button-row">
                 <button id="retry-button" class="primary-button" type="button">Reintentar</button>
                 <button id="menu-button" class="secondary-button" type="button">Menú</button>
+              </div>
+            </section>
+
+            <section class="panel" data-panel="pause" hidden>
+              <p class="eyebrow">Partida pausada</p>
+              <h2>Menú</h2>
+              <p>
+                La partida se queda congelada. También se pausa automáticamente si cambias de
+                pestaña.
+              </p>
+              <div class="button-row">
+                <button id="resume-button" class="primary-button" type="button">Continuar</button>
+                <button id="pause-tutorial-button" class="secondary-button" type="button">
+                  Practicar tutorial
+                </button>
+                <button id="quit-button" class="secondary-button" type="button">Salir</button>
               </div>
             </section>
           </div>

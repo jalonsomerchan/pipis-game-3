@@ -4,15 +4,25 @@ import { Egg } from '../entities/Egg.js';
 import { Fox } from '../entities/Fox.js';
 import { getDistance, randomBetween, randomInt } from '../utils/math.js';
 
+const TUTORIAL_STEPS = {
+  intro: 'intro',
+  fox: 'fox',
+  egg: 'egg',
+  expire: 'expire',
+  done: 'done',
+};
+
 export class GameScene {
-  constructor({ input, sprites, onStats, onGameOver }) {
+  constructor({ input, sprites, onStats, onGameOver, onTutorialComplete }) {
     this.input = input;
     this.sprites = sprites;
     this.onStats = onStats;
     this.onGameOver = onGameOver;
+    this.onTutorialComplete = onTutorialComplete;
   }
 
   reset(levelKey) {
+    this.mode = 'game';
     this.levelKey = levelKey;
     this.level = GAME_CONFIG.levels[levelKey];
     this.elapsedTime = 0;
@@ -31,11 +41,40 @@ export class GameScene {
     this.#emitStats();
   }
 
+  resetTutorial() {
+    this.mode = 'tutorial';
+    this.level = { label: 'Tutorial' };
+    this.elapsedTime = 0;
+    this.foxTimer = Infinity;
+    this.eggTimer = Infinity;
+    this.chickens = [
+      new Chicken({ x: 210, y: 610 }),
+      new Chicken({ x: 295, y: 650 }),
+      new Chicken({ x: 250, y: 735 }),
+    ];
+    this.eggs = [];
+    this.foxes = [];
+    this.effects = [];
+    this.isFinished = false;
+    this.tutorialStep = TUTORIAL_STEPS.intro;
+    this.tutorialTimer = 0;
+    this.tutorialMessage =
+      'Estas son tus Pipis. Son tus gallinas: protégelas para aguantar el mayor tiempo posible.';
+    this.#emitStats();
+  }
+
   update(deltaTime) {
     if (this.isFinished) return;
 
     this.elapsedTime += deltaTime;
-    this.#handleScares();
+
+    if (this.mode === 'tutorial') {
+      this.#updateTutorial(deltaTime);
+      this.#emitStats();
+      return;
+    }
+
+    this.#handleActions();
     this.#updateSpawns(deltaTime);
 
     const barn = this.#barnBounds();
@@ -87,15 +126,75 @@ export class GameScene {
       foxes: this.foxes.length,
       levelLabel: this.level.label,
     });
+
+    if (this.mode === 'tutorial') {
+      renderer.drawTutorialMessage(this.tutorialMessage);
+    }
   }
 
-  #handleScares() {
+  #updateTutorial(deltaTime) {
+    this.tutorialTimer += deltaTime;
+    const actions = this.#handleActions();
+    const barn = this.#barnBounds();
+
+    this.chickens.forEach((chicken) => chicken.update(deltaTime, barn));
+    this.eggs.forEach((egg) => egg.update(deltaTime));
+    this.foxes.forEach((fox) => {
+      fox.animationTime += deltaTime;
+    });
+    this.#updateEffects(deltaTime);
+
+    if (this.tutorialStep === TUTORIAL_STEPS.intro && this.tutorialTimer > 3.2) {
+      this.tutorialStep = TUTORIAL_STEPS.fox;
+      this.tutorialTimer = 0;
+      this.foxes = [new Fox({ x: 318, y: 560 }, 0)];
+      this.tutorialMessage = '¡Zorro a la vista! Tócalo justo encima para espantarlo.';
+    }
+
+    if (this.tutorialStep === TUTORIAL_STEPS.fox && actions.scared > 0) {
+      this.tutorialStep = TUTORIAL_STEPS.egg;
+      this.tutorialTimer = 0;
+      this.foxes = [];
+      this.eggs = [new Egg({ x: 282, y: 690 }, 10)];
+      this.tutorialMessage =
+        'Buen toque. Ahora toca el huevo antes de que se enfríe: dará una Pipi nueva.';
+    }
+
+    if (this.tutorialStep === TUTORIAL_STEPS.egg && actions.hatched > 0) {
+      this.tutorialStep = TUTORIAL_STEPS.expire;
+      this.tutorialTimer = 0;
+      this.eggs = [new Egg({ x: 350, y: 720 }, 3)];
+      this.tutorialMessage = 'Perfecto. Si no tocas un huevo a tiempo, desaparece. Mira este.';
+    }
+
+    if (this.tutorialStep === TUTORIAL_STEPS.expire && this.eggs.every((egg) => egg.isExpired)) {
+      this.eggs = [];
+      this.tutorialStep = TUTORIAL_STEPS.done;
+      this.tutorialTimer = 0;
+      this.tutorialMessage =
+        'La partida termina cuando no queda ninguna Pipi. Ya sabes lo esencial: toca zorros y huevos.';
+    }
+
+    if (this.tutorialStep === TUTORIAL_STEPS.done && this.tutorialTimer > 3.4) {
+      this.isFinished = true;
+      this.onTutorialComplete();
+    }
+  }
+
+  #handleActions() {
+    const actions = {
+      hatched: 0,
+      scared: 0,
+    };
     const taps = this.input.consumeTaps();
 
     for (const tap of taps) {
-      if (this.#hatchEggAt(tap)) continue;
+      if (this.#hatchEggAt(tap)) {
+        actions.hatched += 1;
+        continue;
+      }
 
-      this.#scareFoxAt(tap);
+      if (this.#scareFoxAt(tap)) actions.scared += 1;
     }
 
     if (this.input.consumeKeyboardScare()) {
@@ -104,15 +203,21 @@ export class GameScene {
         y: GAME_CONFIG.canvas.height / 2,
       });
 
-      if (fox) this.#scareFox(fox);
+      if (fox) {
+        this.#scareFox(fox);
+        actions.scared += 1;
+      }
     }
+
+    return actions;
   }
 
   #scareFoxAt(tap) {
     const fox = this.#nearestFox(tap);
-    if (!fox || getDistance(tap, fox) > GAME_CONFIG.fox.scareRadius) return;
+    if (!fox || getDistance(tap, fox) > GAME_CONFIG.fox.scareRadius) return false;
 
     this.#scareFox(fox);
+    return true;
   }
 
   #scareFox(fox) {

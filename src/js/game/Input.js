@@ -23,6 +23,15 @@ export class Input {
     return true;
   }
 
+  consumePause() {
+    if (!this.#keys.has('Escape') && !this.#keys.has('KeyP')) return false;
+
+    this.#keys.delete('Escape');
+    this.#keys.delete('KeyP');
+
+    return true;
+  }
+
   #bindEvents() {
     window.addEventListener('keydown', (event) => {
       this.#keys.add(event.code);

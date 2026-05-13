@@ -9,6 +9,7 @@ export class Game {
   #animationFrame = null;
   #lastTime = 0;
   #isRunning = false;
+  #mode = 'loading';
 
   constructor(elements) {
     this.elements = elements;
@@ -34,6 +35,7 @@ export class Game {
           sprites: this.sprites,
           onStats: (stats) => this.#setStats(stats),
           onGameOver: (time) => this.#finish(time),
+          onTutorialComplete: () => this.#finishTutorial(),
         });
         this.#renderIdleScene();
         this.#showMenu();
@@ -49,6 +51,32 @@ export class Game {
     this.stop();
     this.scene.reset(levelKey);
     this.elements.overlay.hidden = true;
+    this.elements.pauseButton.hidden = false;
+    this.#mode = 'playing';
+    this.#isRunning = true;
+    this.#lastTime = performance.now();
+    this.#animationFrame = requestAnimationFrame((time) => this.#tick(time));
+  }
+
+  startTutorial() {
+    if (!this.scene) return;
+
+    this.stop();
+    this.scene.resetTutorial();
+    this.elements.overlay.hidden = true;
+    this.elements.pauseButton.hidden = false;
+    this.#mode = 'tutorial-playing';
+    this.#isRunning = true;
+    this.#lastTime = performance.now();
+    this.#animationFrame = requestAnimationFrame((time) => this.#tick(time));
+  }
+
+  resume() {
+    if (!this.scene || !this.#mode.startsWith('paused')) return;
+
+    this.elements.overlay.hidden = true;
+    this.elements.pauseButton.hidden = false;
+    this.#mode = this.#mode === 'paused-tutorial' ? 'tutorial-playing' : 'playing';
     this.#isRunning = true;
     this.#lastTime = performance.now();
     this.#animationFrame = requestAnimationFrame((time) => this.#tick(time));
@@ -68,6 +96,11 @@ export class Game {
     const deltaTime = Math.min((time - this.#lastTime) / 1000, 0.05);
     this.#lastTime = time;
 
+    if (this.input.consumePause()) {
+      this.#pause();
+      return;
+    }
+
     this.scene.update(deltaTime);
     this.scene.render(this.renderer);
 
@@ -76,6 +109,9 @@ export class Game {
 
   #bindEvents() {
     this.elements.playButton.addEventListener('click', () => this.#showLevelSelect());
+    this.elements.tutorialButton.addEventListener('click', () => this.startTutorial());
+    this.elements.tutorialDonePlayButton.addEventListener('click', () => this.#showLevelSelect());
+    this.elements.tutorialDoneMenuButton.addEventListener('click', () => this.#showMenu());
     this.elements.shareButton.addEventListener('click', () => {
       this.#share();
     });
@@ -87,8 +123,15 @@ export class Game {
     this.elements.backButton.addEventListener('click', () => this.#showMenu());
     this.elements.retryButton.addEventListener('click', () => this.#showLevelSelect());
     this.elements.menuButton.addEventListener('click', () => this.#showMenu());
+    this.elements.pauseButton.addEventListener('click', () => this.#pause());
+    this.elements.resumeButton.addEventListener('click', () => this.resume());
+    this.elements.pauseTutorialButton.addEventListener('click', () => this.startTutorial());
+    this.elements.quitButton.addEventListener('click', () => this.#showMenu());
     window.addEventListener('blur', () => {
-      if (this.#isRunning) this.stop();
+      if (this.#isPlayingMode()) this.#pause();
+    });
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden && this.#isPlayingMode()) this.#pause();
     });
   }
 
@@ -102,15 +145,13 @@ export class Game {
 
     this.elements.resultTime.textContent = this.renderer.formatTime(time);
     this.elements.bestTime.textContent = this.renderer.formatTime(this.bestTime);
+    this.elements.pauseButton.hidden = true;
+    this.#mode = 'results';
     this.#setOverlayMode('results');
   }
 
-  #setStats({ time = 0, chickens = 0, eggs = 0, foxes = 0, levelLabel = '-' }) {
-    this.elements.time.textContent = this.renderer.formatTime(time);
-    this.elements.chickens.textContent = String(chickens);
-    this.elements.eggs.textContent = String(eggs);
-    this.elements.foxes.textContent = String(foxes);
-    this.elements.level.textContent = levelLabel;
+  #setStats() {
+    // Stats are rendered in-canvas so the game can run fullscreen without an external top bar.
   }
 
   #renderIdleScene() {
@@ -126,20 +167,44 @@ export class Game {
   #showMenu() {
     this.stop();
     this.#renderIdleScene();
+    this.elements.pauseButton.hidden = true;
+    this.#mode = 'menu';
     this.#setOverlayMode('menu');
   }
 
   #showLevelSelect() {
+    this.elements.pauseButton.hidden = true;
+    this.#mode = 'levels';
     this.#setOverlayMode('levels');
   }
 
+  #pause() {
+    if (!this.#isPlayingMode()) return;
+
+    this.stop();
+    this.elements.pauseButton.hidden = true;
+    this.#mode = this.#mode === 'tutorial-playing' ? 'paused-tutorial' : 'paused';
+    this.#setOverlayMode('pause');
+  }
+
+  #finishTutorial() {
+    this.stop();
+    this.elements.pauseButton.hidden = true;
+    this.#mode = 'tutorial-done';
+    this.#setOverlayMode('tutorialDone');
+  }
+
+  #isPlayingMode() {
+    return this.#mode === 'playing' || this.#mode === 'tutorial-playing';
+  }
+
   async #share() {
-    const text = `He protegido el gallinero durante ${this.renderer.formatTime(this.bestTime)}.`;
+    const text = `He defendido a las Pipis durante ${this.renderer.formatTime(this.bestTime)}.`;
 
     try {
       if (navigator.share) {
         await navigator.share({
-          title: 'Gallinas vs Zorros',
+          title: '¡Defiende a las Pipis!',
           text,
         });
 

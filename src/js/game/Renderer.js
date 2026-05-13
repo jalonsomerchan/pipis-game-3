@@ -65,7 +65,7 @@ export class Renderer {
     ctx.textAlign = 'left';
     ctx.fillText(levelLabel, 42, 52);
     ctx.font = '800 15px ui-rounded, system-ui, sans-serif';
-    ctx.fillText(`Gallinas ${chickens}`, 42, 77);
+    ctx.fillText(`Pipis ${chickens}`, 42, 77);
 
     this.#drawHudPill(196, 29, 'Huevos', eggs);
     this.#drawHudPill(280, 29, 'Zorros', foxes);
@@ -172,6 +172,36 @@ export class Renderer {
     ctx.restore();
   }
 
+  drawTutorialMessage(message) {
+    const ctx = this.context;
+    const x = 34;
+    const y = 792;
+    const width = this.width - 68;
+    const height = 118;
+
+    ctx.save();
+    ctx.shadowColor = 'rgba(35, 16, 6, 0.42)';
+    ctx.shadowBlur = 24;
+    ctx.fillStyle = 'rgba(34, 16, 8, 0.72)';
+    this.#roundedRect(x, y, width, height, 28);
+    ctx.fill();
+
+    ctx.shadowBlur = 0;
+    ctx.strokeStyle = 'rgba(255, 247, 223, 0.28)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    ctx.fillStyle = '#ffd98a';
+    ctx.font = '900 12px ui-rounded, system-ui, sans-serif';
+    ctx.textAlign = 'left';
+    ctx.fillText('TUTORIAL', x + 22, y + 32);
+
+    ctx.fillStyle = '#fff7df';
+    ctx.font = '900 20px ui-rounded, "Arial Rounded MT Bold", system-ui, sans-serif';
+    this.#wrapText(message, x + 22, y + 62, width - 44, 24);
+    ctx.restore();
+  }
+
   formatTime(seconds) {
     const safeSeconds = Math.max(0, Math.floor(seconds));
     const minutes = Math.floor(safeSeconds / 60);
@@ -202,6 +232,25 @@ export class Renderer {
     ctx.fillText(icon.toUpperCase(), x + 13, y + 22);
     ctx.font = '900 17px ui-rounded, system-ui, sans-serif';
     ctx.fillText(String(value), x + 13, y + 43);
+  }
+
+  #wrapText(text, x, y, maxWidth, lineHeight) {
+    const words = text.split(' ');
+    let line = '';
+    let cursorY = y;
+
+    for (const word of words) {
+      const testLine = `${line}${word} `;
+      if (this.context.measureText(testLine).width > maxWidth && line) {
+        this.context.fillText(line.trim(), x, cursorY);
+        line = `${word} `;
+        cursorY += lineHeight;
+      } else {
+        line = testLine;
+      }
+    }
+
+    this.context.fillText(line.trim(), x, cursorY);
   }
 
   #drawSceneVignette() {
