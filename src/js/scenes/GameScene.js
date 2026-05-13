@@ -348,8 +348,7 @@ export class GameScene {
       this.foxes.push(
         new Fox(
           position,
-          getFoxSpeed(this.gameMode, this.modeState, metrics.foxSpeed, speedMultiplier) *
-            randomBetween(0.94, 1.08),
+          getFoxSpeed(this.gameMode, metrics.foxSpeed, speedMultiplier) * randomBetween(0.94, 1.08),
         ),
       );
       this.effects.push({
