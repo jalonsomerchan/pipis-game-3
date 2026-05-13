@@ -11,7 +11,8 @@
     "lint": "eslint .",
     "format": "prettier . --write",
     "format:check": "prettier . --check",
-    "check:balance": "node scripts/check-balance.js"
+    "check:balance": "node scripts/check-balance.js",
+    "check:feedback": "node scripts/check-feedback.js"
   },
   "keywords": [
     "html5",
