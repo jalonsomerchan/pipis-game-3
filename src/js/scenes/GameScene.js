@@ -92,7 +92,11 @@ export class GameScene {
 
     if (this.chickens.length <= 0) {
       this.isFinished = true;
-      this.#queueFeedback('gameOver', GAME_CONFIG.canvas.width / 2, GAME_CONFIG.canvas.height / 2);
+      this.#queueFeedback(
+        'gameOver',
+        GAME_CONFIG.canvas.width / 2,
+        GAME_CONFIG.canvas.height / 2,
+      );
       this.onGameOver(this.elapsedTime);
     }
 
