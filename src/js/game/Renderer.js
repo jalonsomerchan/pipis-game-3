@@ -1,3 +1,5 @@
+import { GAME_CONFIG } from '../config/gameConfig.js';
+
 export class Renderer {
   constructor(canvas, config) {
     this.canvas = canvas;
@@ -18,31 +20,205 @@ export class Renderer {
   }
 
   clear() {
-    const gradient = this.context.createLinearGradient(0, 0, 0, this.height);
-    gradient.addColorStop(0, '#0f172a');
-    gradient.addColorStop(1, '#020617');
-
-    this.context.fillStyle = gradient;
+    this.context.fillStyle = '#2b160b';
     this.context.fillRect(0, 0, this.width, this.height);
   }
 
-  drawCircle({ x, y, radius, color, shadowColor = color }) {
-    this.context.save();
-    this.context.shadowBlur = 24;
-    this.context.shadowColor = shadowColor;
-    this.context.fillStyle = color;
-    this.context.beginPath();
-    this.context.arc(x, y, radius, 0, Math.PI * 2);
-    this.context.fill();
-    this.context.restore();
+  drawBackground(image) {
+    if (!image) return;
+
+    const scale = Math.max(this.width / image.width, this.height / image.height);
+    const width = image.width * scale;
+    const height = image.height * scale;
+    const x = (this.width - width) / 2;
+    const y = (this.height - height) / 2;
+
+    this.context.drawImage(image, x, y, width, height);
+    this.#drawSceneVignette();
   }
 
-  drawText(text, x, y) {
-    this.context.save();
-    this.context.fillStyle = 'rgba(255,255,255,0.72)';
-    this.context.font = '700 18px ui-sans-serif, system-ui, sans-serif';
-    this.context.textAlign = 'center';
-    this.context.fillText(text, x, y);
-    this.context.restore();
+  drawBarn() {
+    this.#drawSceneVignette();
+  }
+
+  drawHud({ time, chickens, eggs, foxes, levelLabel }) {
+    const ctx = this.context;
+
+    ctx.save();
+    ctx.shadowColor = 'rgba(52, 24, 8, 0.3)';
+    ctx.shadowBlur = 20;
+    ctx.fillStyle = 'rgba(255, 247, 223, 0.22)';
+    this.#roundedRect(16, 18, this.width - 32, 82, 28);
+    ctx.fill();
+
+    ctx.shadowBlur = 0;
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.34)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    ctx.fillStyle = 'rgba(33, 18, 8, 0.58)';
+    this.#roundedRect(26, 29, 152, 60, 20);
+    ctx.fill();
+
+    ctx.fillStyle = '#fff9e8';
+    ctx.font = '900 17px ui-rounded, "Arial Rounded MT Bold", system-ui, sans-serif';
+    ctx.textAlign = 'left';
+    ctx.fillText(levelLabel, 42, 52);
+    ctx.font = '800 15px ui-rounded, system-ui, sans-serif';
+    ctx.fillText(`Gallinas ${chickens}`, 42, 77);
+
+    this.#drawHudPill(196, 29, 'Huevos', eggs);
+    this.#drawHudPill(280, 29, 'Zorros', foxes);
+    this.#drawHudPill(364, 29, 'Tiempo', this.formatTime(time), 124);
+
+    ctx.restore();
+  }
+
+  drawEgg(egg) {
+    const ctx = this.context;
+    const pulse = 1 + Math.sin(egg.age * 8) * 0.05;
+    const radius = egg.radius * pulse;
+    const ringAlpha = egg.isWarning ? 0.72 : 0.38;
+
+    ctx.save();
+    ctx.translate(egg.x, egg.y);
+
+    ctx.strokeStyle = `rgba(255, 239, 171, ${ringAlpha})`;
+    ctx.lineWidth = 5;
+    ctx.beginPath();
+    ctx.arc(0, 0, GAME_CONFIG.egg.hatchRadius * egg.progress, 0, Math.PI * 2);
+    ctx.stroke();
+
+    ctx.shadowColor = 'rgba(91, 42, 12, 0.35)';
+    ctx.shadowBlur = 16;
+    ctx.fillStyle = 'rgba(61, 31, 10, 0.22)';
+    ctx.beginPath();
+    ctx.ellipse(0, 22, radius * 0.86, radius * 0.28, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    const gradient = ctx.createRadialGradient(-8, -12, 4, 0, 0, radius);
+    gradient.addColorStop(0, '#fffdf0');
+    gradient.addColorStop(0.58, '#ffe7a2');
+    gradient.addColorStop(1, egg.isWarning ? '#ff9b73' : '#f7c56d');
+    ctx.fillStyle = gradient;
+    ctx.beginPath();
+    ctx.ellipse(0, 0, radius * 0.72, radius, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.strokeStyle = 'rgba(105, 57, 22, 0.28)';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  drawSprite(sprite, x, y, size, frameIndex = 0, options = {}) {
+    if (!sprite?.image) return;
+
+    const frame = Math.floor(frameIndex) % sprite.frames;
+    const col = frame % sprite.columns;
+    const row = Math.floor(frame / sprite.columns);
+    const sourceX = col * sprite.frameWidth;
+    const sourceY = row * sprite.frameHeight;
+    const ctx = this.context;
+
+    ctx.save();
+    ctx.globalAlpha = options.alpha ?? 1;
+    ctx.translate(x, y);
+    if (options.flipX) ctx.scale(-1, 1);
+    ctx.drawImage(
+      sprite.image,
+      sourceX,
+      sourceY,
+      sprite.frameWidth,
+      sprite.frameHeight,
+      -size / 2,
+      -size / 2,
+      size,
+      size,
+    );
+    ctx.restore();
+  }
+
+  drawScareEffect(effect) {
+    const progress = 1 - effect.life / effect.duration;
+    const radius =
+      (effect.type === 'hatch' ? 14 : 22) + progress * (effect.type === 'hatch' ? 44 : 62);
+    const alpha = Math.max(0, 1 - progress);
+    const ctx = this.context;
+
+    ctx.save();
+    ctx.strokeStyle = `rgba(255, 246, 166, ${alpha})`;
+    ctx.lineWidth = 7;
+    ctx.beginPath();
+    ctx.arc(effect.x, effect.y, radius, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.fillStyle = `rgba(${effect.type === 'hatch' ? '255, 214, 89' : '255, 94, 61'}, ${alpha * 0.8})`;
+    ctx.font = '900 30px ui-rounded, system-ui, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(effect.type === 'hatch' ? '+' : '!', effect.x, effect.y - radius * 0.45);
+    ctx.restore();
+  }
+
+  drawDangerPulse(target, duration) {
+    const alpha = Math.max(0, target.dangerPulse / duration);
+    const ctx = this.context;
+
+    ctx.save();
+    ctx.strokeStyle = `rgba(220, 38, 38, ${alpha})`;
+    ctx.lineWidth = 5;
+    ctx.beginPath();
+    ctx.arc(target.x, target.y, 52 + (1 - alpha) * 20, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  formatTime(seconds) {
+    const safeSeconds = Math.max(0, Math.floor(seconds));
+    const minutes = Math.floor(safeSeconds / 60);
+    const remainder = String(safeSeconds % 60).padStart(2, '0');
+
+    return `${minutes}:${remainder}`;
+  }
+
+  #roundedRect(x, y, width, height, radius) {
+    this.context.beginPath();
+    this.context.moveTo(x + radius, y);
+    this.context.arcTo(x + width, y, x + width, y + height, radius);
+    this.context.arcTo(x + width, y + height, x, y + height, radius);
+    this.context.arcTo(x, y + height, x, y, radius);
+    this.context.arcTo(x, y, x + width, y, radius);
+    this.context.closePath();
+  }
+
+  #drawHudPill(x, y, icon, value, width = 72) {
+    const ctx = this.context;
+
+    ctx.fillStyle = 'rgba(33, 18, 8, 0.5)';
+    this.#roundedRect(x, y, width, 60, 20);
+    ctx.fill();
+    ctx.fillStyle = '#fff9e8';
+    ctx.font = '900 9px ui-rounded, system-ui, sans-serif';
+    ctx.textAlign = 'left';
+    ctx.fillText(icon.toUpperCase(), x + 13, y + 22);
+    ctx.font = '900 17px ui-rounded, system-ui, sans-serif';
+    ctx.fillText(String(value), x + 13, y + 43);
+  }
+
+  #drawSceneVignette() {
+    const ctx = this.context;
+    const gradient = ctx.createRadialGradient(
+      this.width / 2,
+      this.height * 0.54,
+      90,
+      this.width / 2,
+      this.height / 2,
+      this.height * 0.72,
+    );
+
+    gradient.addColorStop(0, 'rgba(255, 245, 190, 0.06)');
+    gradient.addColorStop(0.72, 'rgba(62, 31, 10, 0.02)');
+    gradient.addColorStop(1, 'rgba(35, 18, 7, 0.38)');
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, this.width, this.height);
   }
 }

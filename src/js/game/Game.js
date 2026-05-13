@@ -1,33 +1,54 @@
+import { loadSprites } from '../assets/loadSprites.js';
 import { GAME_CONFIG } from '../config/gameConfig.js';
 import { GameScene } from '../scenes/GameScene.js';
-import { Renderer } from './Renderer.js';
-import { Input } from './Input.js';
 import { readNumber, writeNumber } from '../utils/storage.js';
+import { Input } from './Input.js';
+import { Renderer } from './Renderer.js';
 
 export class Game {
   #animationFrame = null;
   #lastTime = 0;
   #isRunning = false;
 
-  constructor({ canvas, scoreElement, bestScoreElement, overlayElement, playButton }) {
-    this.renderer = new Renderer(canvas, GAME_CONFIG.canvas);
-    this.input = new Input(canvas);
-    this.scoreElement = scoreElement;
-    this.bestScoreElement = bestScoreElement;
-    this.overlayElement = overlayElement;
-    this.playButton = playButton;
-    this.bestScore = readNumber(GAME_CONFIG.storage.bestScoreKey);
-    this.scene = new GameScene({ input: this.input, onScore: (score) => this.#setScore(score) });
+  constructor(elements) {
+    this.elements = elements;
+    this.renderer = new Renderer(elements.canvas, GAME_CONFIG.canvas);
+    this.input = new Input(elements.canvas);
+    this.bestTime = readNumber(GAME_CONFIG.storage.bestTimeKey);
 
     this.#bindEvents();
-    this.#setScore(0);
-    this.#setBestScore(this.bestScore);
-    this.scene.render(this.renderer);
+    this.#showLoading();
+    this.#load();
   }
 
-  start() {
-    this.scene.reset();
-    this.overlayElement.hidden = true;
+  async #load() {
+    try {
+      const startedAt = performance.now();
+      this.sprites = await loadSprites();
+      const elapsed = performance.now() - startedAt;
+      const remaining = Math.max(0, GAME_CONFIG.loading.minDuration - elapsed);
+
+      window.setTimeout(() => {
+        this.scene = new GameScene({
+          input: this.input,
+          sprites: this.sprites,
+          onStats: (stats) => this.#setStats(stats),
+          onGameOver: (time) => this.#finish(time),
+        });
+        this.#renderIdleScene();
+        this.#showMenu();
+      }, remaining);
+    } catch {
+      this.elements.loadingTitle.textContent = 'No se pudieron cargar los sprites';
+    }
+  }
+
+  startLevel(levelKey) {
+    if (!this.scene) return;
+
+    this.stop();
+    this.scene.reset(levelKey);
+    this.elements.overlay.hidden = true;
     this.#isRunning = true;
     this.#lastTime = performance.now();
     this.#animationFrame = requestAnimationFrame((time) => this.#tick(time));
@@ -54,21 +75,93 @@ export class Game {
   }
 
   #bindEvents() {
-    this.playButton.addEventListener('click', () => this.start());
-    window.addEventListener('blur', () => this.stop());
+    this.elements.playButton.addEventListener('click', () => this.#showLevelSelect());
+    this.elements.shareButton.addEventListener('click', () => {
+      this.#share();
+    });
+
+    this.elements.levelButtons.forEach((button) => {
+      button.addEventListener('click', () => this.startLevel(button.dataset.level));
+    });
+
+    this.elements.backButton.addEventListener('click', () => this.#showMenu());
+    this.elements.retryButton.addEventListener('click', () => this.#showLevelSelect());
+    this.elements.menuButton.addEventListener('click', () => this.#showMenu());
+    window.addEventListener('blur', () => {
+      if (this.#isRunning) this.stop();
+    });
   }
 
-  #setScore(score) {
-    this.scoreElement.textContent = String(score);
+  #finish(time) {
+    this.stop();
 
-    if (score > this.bestScore) {
-      this.bestScore = score;
-      writeNumber(GAME_CONFIG.storage.bestScoreKey, score);
-      this.#setBestScore(score);
+    if (time > this.bestTime) {
+      this.bestTime = time;
+      writeNumber(GAME_CONFIG.storage.bestTimeKey, time);
+    }
+
+    this.elements.resultTime.textContent = this.renderer.formatTime(time);
+    this.elements.bestTime.textContent = this.renderer.formatTime(this.bestTime);
+    this.#setOverlayMode('results');
+  }
+
+  #setStats({ time = 0, chickens = 0, eggs = 0, foxes = 0, levelLabel = '-' }) {
+    this.elements.time.textContent = this.renderer.formatTime(time);
+    this.elements.chickens.textContent = String(chickens);
+    this.elements.eggs.textContent = String(eggs);
+    this.elements.foxes.textContent = String(foxes);
+    this.elements.level.textContent = levelLabel;
+  }
+
+  #renderIdleScene() {
+    this.renderer.clear();
+    this.renderer.drawBackground(this.sprites?.background.image);
+  }
+
+  #showLoading() {
+    this.#setOverlayMode('loading');
+    this.#setStats({ levelLabel: 'Cargando' });
+  }
+
+  #showMenu() {
+    this.stop();
+    this.#renderIdleScene();
+    this.#setOverlayMode('menu');
+  }
+
+  #showLevelSelect() {
+    this.#setOverlayMode('levels');
+  }
+
+  async #share() {
+    const text = `He protegido el gallinero durante ${this.renderer.formatTime(this.bestTime)}.`;
+
+    try {
+      if (navigator.share) {
+        await navigator.share({
+          title: 'Gallinas vs Zorros',
+          text,
+        });
+
+        return;
+      }
+
+      await navigator.clipboard?.writeText(text);
+      this.elements.shareButton.textContent = 'Copiado';
+      window.setTimeout(() => {
+        this.elements.shareButton.textContent = 'Compartir';
+      }, 1400);
+    } catch {
+      this.elements.shareButton.textContent = 'Compartir';
     }
   }
 
-  #setBestScore(score) {
-    this.bestScoreElement.textContent = String(score);
+  #setOverlayMode(mode) {
+    this.elements.overlay.hidden = false;
+    this.elements.overlay.dataset.mode = mode;
+
+    for (const panel of this.elements.panels) {
+      panel.hidden = panel.dataset.panel !== mode;
+    }
   }
 }
