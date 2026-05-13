@@ -8,6 +8,7 @@ npm run lint
 npm run format:check
 npm run check:balance
 npm run check:feedback
+npm run check:modes
 npm run build
 npm run preview
 ```
@@ -68,12 +69,21 @@ npm run check:feedback
 Este check falla si una acción principal no tiene sonido/vibración, si el volumen es excesivo o si un
 sonido dura demasiado para móvil.
 
+Los modos de juego se validan con:
+
+```sh
+npm run check:modes
+```
+
+Este check falla si un modo no tiene `id`, nombre visible u objetivo, si las constantes principales son inválidas, si las oleadas pueden superar límites simultáneos o si `GameScene` no puede inicializarse/reiniciarse por modo y dificultad.
+
 ## Checklist para PRs
 
 - ¿Pasa `npm run lint`?
 - ¿Pasa `npm run format:check`?
 - ¿Pasa `npm run check:balance` si se toca el balance?
 - ¿Pasa `npm run check:feedback` si se toca el feedback?
+- ¿Pasa `npm run check:modes` si se tocan modos, reglas o flujo de partida?
 - ¿Pasa `npm run build`?
 - ¿No se han roto controles móviles?
 - ¿No hay errores de consola?
