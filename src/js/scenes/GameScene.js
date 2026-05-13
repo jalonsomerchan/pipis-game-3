@@ -9,7 +9,7 @@ import {
   buildModeResult,
   createModeState,
   getModeFinish,
-  getModeNud,
+  getModeHud,
   updateModeTimers,
   updateWaveSpawns,
 } from '../modes/modeRules.js';
@@ -166,7 +166,7 @@ export class GameScene {
       this.tutorialStep = TUTORIAL_STEPS.egg;
       this.tutorialTimer = 0;
       this.foxes = [];
-      this.eggs = [new Egg({x: 282, y: 690 }, 10)];
+      this.eggs = [new Egg({ x: 282, y: 690 }, 10)];
       this.tutorialMessage =
         'Buen toque. Ahora toca el huevo antes de que se enfríe: dará una Pipi nueva.';
     }
