@@ -334,7 +334,9 @@ export class GameScene {
 
     for (let index = 0; index < foxesToSpawn; index += 1) {
       const position = this.#randomEdgePosition();
-      this.foxes.push(new Fox(position, metrics.foxSpeed * speedMultiplier * randomBetween(0.94, 1.08)));
+      this.foxes.push(
+        new Fox(position, metrics.foxSpeed * speedMultiplier * randomBetween(0.94, 1.08)),
+      );
       this.effects.push({
         type: 'spawn',
         x: position.x,
