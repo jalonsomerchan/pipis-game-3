@@ -41,14 +41,14 @@ export class Renderer {
     this.#drawSceneVignette();
   }
 
-  drawHud({ time, chickens, eggs, foxes, levelLabel }) {
+  drawHud({ time, chickens, levelLabel }) {
     const ctx = this.context;
 
     ctx.save();
     ctx.shadowColor = 'rgba(52, 24, 8, 0.3)';
     ctx.shadowBlur = 20;
-    ctx.fillStyle = 'rgba(255, 247, 223, 0.22)';
-    this.#roundedRect(16, 18, this.width - 32, 82, 28);
+    ctx.fillStyle = 'rgba(255, 247, 223, 0.2)';
+    this.#roundedRect(16, 18, this.width - 32, 78, 28);
     ctx.fill();
 
     ctx.shadowBlur = 0;
@@ -57,31 +57,31 @@ export class Renderer {
     ctx.stroke();
 
     ctx.fillStyle = 'rgba(33, 18, 8, 0.58)';
-    this.#roundedRect(26, 29, 152, 60, 20);
+    this.#roundedRect(28, 29, 202, 56, 20);
     ctx.fill();
 
-    ctx.fillStyle = '#fff9e8';
-    ctx.font = '900 17px ui-rounded, "Arial Rounded MT Bold", system-ui, sans-serif';
+    ctx.fillStyle = '#ffd98a';
+    ctx.font = '900 10px ui-rounded, system-ui, sans-serif';
     ctx.textAlign = 'left';
-    ctx.fillText(levelLabel, 42, 52);
-    ctx.font = '800 15px ui-rounded, system-ui, sans-serif';
-    ctx.fillText(`Pipis ${chickens}`, 42, 77);
+    ctx.fillText(levelLabel.toUpperCase(), 44, 51);
+    ctx.fillStyle = '#fff9e8';
+    ctx.font = '950 21px ui-rounded, "Arial Rounded MT Bold", system-ui, sans-serif';
+    ctx.fillText(`Pipis ${chickens}`, 44, 75);
 
-    this.#drawHudPill(196, 29, 'Huevos', eggs);
-    this.#drawHudPill(280, 29, 'Zorros', foxes);
-    this.#drawHudPill(364, 29, 'Tiempo', this.formatTime(time), 124);
-
+    this.#drawTimerPill(time);
     ctx.restore();
   }
 
   drawEgg(egg) {
     const ctx = this.context;
-    const pulse = 1 + Math.sin(egg.age * 8) * 0.05;
+    const pulse = 1 + Math.sin(egg.age * GAME_CONFIG.egg.pulseSpeed) * 0.05;
+    const wobble = Math.sin(egg.age * 10) * (egg.isWarning ? 0.08 : 0.035);
     const radius = egg.radius * pulse;
     const ringAlpha = egg.isWarning ? 0.72 : 0.38;
 
     ctx.save();
     ctx.translate(egg.x, egg.y);
+    ctx.rotate(wobble);
 
     ctx.strokeStyle = `rgba(255, 239, 171, ${ringAlpha})`;
     ctx.lineWidth = 5;
@@ -120,10 +120,11 @@ export class Renderer {
     const sourceX = col * sprite.frameWidth;
     const sourceY = row * sprite.frameHeight;
     const ctx = this.context;
+    const bounce = options.bounce ?? 0;
 
     ctx.save();
     ctx.globalAlpha = options.alpha ?? 1;
-    ctx.translate(x, y);
+    ctx.translate(x, y + bounce);
     if (options.flipX) ctx.scale(-1, 1);
     ctx.drawImage(
       sprite.image,
@@ -291,6 +292,30 @@ export class Renderer {
         fontSize: 34,
         fontWeight: 950,
       },
+      spawn: {
+        label: '!',
+        stroke: 'rgba(255, 164, 92, 0.82)',
+        fill: 'rgba(255, 184, 105, 0.86)',
+        lineWidth: 5,
+        radius: 12,
+        growth: 74,
+        particles: 8,
+        particleSize: 3.2,
+        fontSize: 24,
+        fontWeight: 950,
+      },
+      trail: {
+        label: '',
+        stroke: 'rgba(255, 245, 190, 0.24)',
+        fill: 'rgba(255, 245, 190, 0.32)',
+        lineWidth: 3,
+        radius: 4,
+        growth: 16,
+        particles: 3,
+        particleSize: 2.4,
+        fontSize: 1,
+        fontWeight: 900,
+      },
     };
 
     return styles[type] ?? styles.scare;
@@ -306,18 +331,20 @@ export class Renderer {
     this.context.closePath();
   }
 
-  #drawHudPill(x, y, icon, value, width = 72) {
+  #drawTimerPill(time) {
     const ctx = this.context;
+    const value = this.formatTime(time);
 
-    ctx.fillStyle = 'rgba(33, 18, 8, 0.5)';
-    this.#roundedRect(x, y, width, 60, 20);
+    ctx.fillStyle = 'rgba(33, 18, 8, 0.52)';
+    this.#roundedRect(252, 29, this.width - 280, 56, 20);
     ctx.fill();
-    ctx.fillStyle = '#fff9e8';
-    ctx.font = '900 9px ui-rounded, system-ui, sans-serif';
+    ctx.fillStyle = '#ffd98a';
+    ctx.font = '900 10px ui-rounded, system-ui, sans-serif';
     ctx.textAlign = 'left';
-    ctx.fillText(icon.toUpperCase(), x + 13, y + 22);
-    ctx.font = '900 17px ui-rounded, system-ui, sans-serif';
-    ctx.fillText(String(value), x + 13, y + 43);
+    ctx.fillText('TIEMPO', 272, 51);
+    ctx.fillStyle = '#fff9e8';
+    ctx.font = '950 24px ui-rounded, system-ui, sans-serif';
+    ctx.fillText(value, 272, 76);
   }
 
   #wrapText(text, x, y, maxWidth, lineHeight) {

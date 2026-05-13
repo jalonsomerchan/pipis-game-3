@@ -85,13 +85,18 @@ export class GameScene {
     this.foxes.forEach((fox) => fox.update(deltaTime, this.chickens));
     this.#resolveEatenChickens();
     this.#updateEffects(deltaTime);
+    this.#addSpeedTrails();
 
     this.eggs = this.eggs.filter((egg) => !egg.isExpired);
     this.foxes = this.foxes.filter((fox) => !fox.isGone);
 
     if (this.chickens.length <= 0) {
       this.isFinished = true;
-      this.#queueFeedback('gameOver', GAME_CONFIG.canvas.width / 2, GAME_CONFIG.canvas.height / 2);
+      this.#queueFeedback(
+        'gameOver',
+        GAME_CONFIG.canvas.width / 2,
+        GAME_CONFIG.canvas.height / 2,
+      );
       this.onGameOver(this.elapsedTime);
     }
 
@@ -111,13 +116,16 @@ export class GameScene {
         renderer.drawDangerPulse(chicken, GAME_CONFIG.effects.dangerPulseDuration);
       }
 
-      renderer.drawSprite(this.sprites.chicken, chicken.x, chicken.y, 92, chicken.frameIndex);
+      renderer.drawSprite(this.sprites.chicken, chicken.x, chicken.y, 92, chicken.frameIndex, {
+        bounce: Math.sin(this.elapsedTime * 7 + chicken.x * 0.02) * 2.5,
+      });
     }
 
     for (const fox of this.foxes) {
       renderer.drawSprite(this.sprites.fox, fox.x, fox.y, 112, fox.frameIndex, {
         flipX: fox.flipX,
         alpha: fox.wasScared ? 0.72 : 1,
+        bounce: fox.wasScared ? 0 : Math.sin(this.elapsedTime * 12 + fox.y * 0.02) * 2,
       });
     }
 
@@ -125,8 +133,6 @@ export class GameScene {
     renderer.drawHud({
       time: this.elapsedTime,
       chickens: this.chickens.length,
-      eggs: this.eggs.length,
-      foxes: this.foxes.length,
       levelLabel: this.level.label,
     });
 
@@ -291,7 +297,7 @@ export class GameScene {
     this.eggTimer -= deltaTime;
 
     if (this.foxTimer <= 0) {
-      this.#spawnFox();
+      this.#spawnFoxWave();
       this.foxTimer = this.#difficultyMetrics().foxSpawnInterval;
     }
 
@@ -301,11 +307,25 @@ export class GameScene {
     }
   }
 
-  #spawnFox() {
+  #spawnFoxWave() {
     const metrics = this.#difficultyMetrics();
-    if (this.foxes.length >= metrics.maxFoxes) return;
+    const availableSlots = Math.max(0, metrics.maxFoxes - this.foxes.length);
+    if (availableSlots <= 0) return;
 
-    this.foxes.push(new Fox(this.#randomEdgePosition(), metrics.foxSpeed));
+    const waveTarget = Math.random() < metrics.foxWaveChance ? metrics.foxWaveMax : metrics.foxWaveMin;
+    const foxesToSpawn = Math.min(availableSlots, waveTarget);
+
+    for (let index = 0; index < foxesToSpawn; index += 1) {
+      const position = this.#randomEdgePosition();
+      this.foxes.push(new Fox(position, metrics.foxSpeed * randomBetween(0.94, 1.08)));
+      this.effects.push({
+        type: 'spawn',
+        x: position.x,
+        y: position.y,
+        life: GAME_CONFIG.effects.spawnDuration,
+        duration: GAME_CONFIG.effects.spawnDuration,
+      });
+    }
   }
 
   #addChicken() {
@@ -361,6 +381,22 @@ export class GameScene {
     this.effects = this.effects.filter((effect) => effect.life > 0);
   }
 
+  #addSpeedTrails() {
+    if (this.effects.length >= GAME_CONFIG.effects.maxParticles) return;
+
+    for (const fox of this.foxes) {
+      if (fox.wasScared || Math.random() > 0.18) continue;
+
+      this.effects.push({
+        type: 'trail',
+        x: fox.x + randomBetween(-18, 18),
+        y: fox.y + randomBetween(-18, 18),
+        life: GAME_CONFIG.effects.speedTrailDuration,
+        duration: GAME_CONFIG.effects.speedTrailDuration,
+      });
+    }
+  }
+
   #difficultyMetrics() {
     return getDifficultyMetrics(this.level, this.elapsedTime);
   }
@@ -403,8 +439,6 @@ export class GameScene {
     this.onStats({
       time: this.elapsedTime,
       chickens: this.chickens.length,
-      eggs: this.eggs.length,
-      foxes: this.foxes.length,
       levelLabel: this.level.label,
     });
   }
