@@ -41,6 +41,20 @@ npm run dev
 npm run build
 ```
 
+## Build para GitHub Pages
+
+El workflow de Pages ejecuta el build con `GITHUB_PAGES=true` para publicar el juego bajo la subruta del repositorio:
+
+```bash
+GITHUB_PAGES=true npm run build
+```
+
+La URL pública esperada es:
+
+```txt
+https://jalonsomerchan.github.io/pipis-game-3/
+```
+
 ## Lint
 
 ```bash
