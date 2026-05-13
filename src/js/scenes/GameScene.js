@@ -8,8 +8,15 @@ import {
   applyModeActions,
   buildModeResult,
   createModeState,
+  getEggDuration,
+  getEggSpawnInterval,
+  getFoxSpawnInterval,
+  getFoxSpeed,
   getModeFinish,
-  getModeNud,
+  getModeHud,
+  getModeInitialChickens,
+  getModeVisuals,
+  shouldUseStandardFoxSpawns,
   updateModeTimers,
   updateWaveSpawns,
 } from '../modes/modeRules.js';
@@ -48,7 +55,7 @@ export class GameScene {
     this.effects = [];
     this.isFinished = false;
 
-    for (let index = 0; index < this.level.initialChickens; index += 1) {
+    for (let index = 0; index < getModeInitialChickens(this.gameMode, this.level); index += 1) {
       this.#addChicken();
     }
 
@@ -135,6 +142,9 @@ export class GameScene {
       });
     }
 
+    const visuals = this.gameMode ? getModeVisuals(this.gameMode) : null;
+    if (visuals) renderer.drawModeOverlay(visuals);
+
     this.effects.forEach((effect) => renderer.drawScareEffect(effect));
     renderer.drawHud(this.#hudStats());
 
@@ -166,7 +176,7 @@ export class GameScene {
       this.tutorialStep = TUTORIAL_STEPS.egg;
       this.tutorialTimer = 0;
       this.foxes = [];
-      this.eggs = [new Egg({x: 282, y: 690 }, 10)];
+      this.eggs = [new Egg({ x: 282, y: 690 }, 10)];
       this.tutorialMessage =
         'Buen toque. Ahora toca el huevo antes de que se enfríe: dará una Pipi nueva.';
     }
@@ -297,18 +307,18 @@ export class GameScene {
   #updateSpawns(deltaTime) {
     this.eggTimer -= deltaTime;
 
-    if (this.gameMode.rules.standardFoxSpawns) {
+    if (shouldUseStandardFoxSpawns(this.gameMode)) {
       this.foxTimer -= deltaTime;
 
       if (this.foxTimer <= 0) {
         this.#spawnRandomFoxWave();
-        this.foxTimer = this.#difficultyMetrics().foxSpawnInterval;
+        this.foxTimer = getFoxSpawnInterval(this.gameMode, this.#difficultyMetrics().foxSpawnInterval);
       }
     }
 
     if (this.eggTimer <= 0) {
       this.#spawnEgg();
-      this.eggTimer = this.#difficultyMetrics().eggSpawnInterval;
+      this.eggTimer = getEggSpawnInterval(this.gameMode, this.#difficultyMetrics().eggSpawnInterval);
     }
 
     const plan = updateWaveSpawns(this.gameMode, this.modeState, {
@@ -336,7 +346,11 @@ export class GameScene {
     for (let index = 0; index < foxesToSpawn; index += 1) {
       const position = this.#randomEdgePosition();
       this.foxes.push(
-        new Fox(position, metrics.foxSpeed * speedMultiplier * randomBetween(0.94, 1.08)),
+        new Fox(
+          position,
+          getFoxSpeed(this.gameMode, this.modeState, metrics.foxSpeed, speedMultiplier) *
+            randomBetween(0.94, 1.08),
+        ),
       );
       this.effects.push({
         type: 'spawn',
@@ -353,7 +367,12 @@ export class GameScene {
   }
 
   #spawnEgg() {
-    this.eggs.push(new Egg(this.#randomBarnPosition(0.78), this.#difficultyMetrics().eggDuration));
+    this.eggs.push(
+      new Egg(
+        this.#randomBarnPosition(0.78),
+        getEggDuration(this.gameMode, this.#difficultyMetrics().eggDuration),
+      ),
+    );
   }
 
   #randomBarnPosition(spread) {
@@ -448,7 +467,7 @@ export class GameScene {
     const maxFoxes = this.#difficultyMetrics().maxFoxes;
     const waveLimit = this.gameMode.rules.maxSimultaneousFoxes;
 
-    return waveLimit ? Math.min(maxFoxes, waveLimit) : maxFoxes;
+    return waveLimit !== undefined ? Math.min(maxFoxes, waveLimit) : maxFoxes;
   }
 
   #queueFeedback(type, x, y) {
