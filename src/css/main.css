@@ -1,0 +1,31 @@
+@import 'tailwindcss';
+
+:root {
+  color-scheme: dark;
+  --game-safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  min-height: 100%;
+  overscroll-behavior: none;
+}
+
+html {
+  background: #020617;
+}
+
+body {
+  font-family: ui-sans-serif, system-ui, sans-serif;
+  margin: 0;
+  touch-action: manipulation;
+}
+
+button,
+canvas {
+  -webkit-tap-highlight-color: transparent;
+}

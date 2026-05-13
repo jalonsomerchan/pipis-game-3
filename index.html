@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta
+      name="description"
+      content="Template moderno para crear juegos HTML5 con JavaScript puro, Canvas, Vite y Tailwind CSS."
+    />
+    <meta name="theme-color" content="#09090b" />
+
+    <title>Game Template</title>
+
+    <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
+  </head>
+
+  <body class="min-h-screen overflow-hidden bg-slate-950 text-white antialiased">
+    <div id="app" class="flex min-h-screen flex-col">
+      <header class="border-b border-white/10 bg-black/30 px-4 py-3 backdrop-blur-xl">
+        <div class="mx-auto flex max-w-6xl items-center justify-between gap-4">
+          <div>
+            <p class="text-xs font-semibold uppercase tracking-[0.25em] text-cyan-300">
+              HTML5 Game
+            </p>
+            <h1 class="text-xl font-black tracking-tight sm:text-2xl">Game Template</h1>
+          </div>
+
+          <div class="flex items-center gap-3 text-sm text-slate-300" aria-live="polite">
+            <span>Puntos: <strong id="score" class="text-white">0</strong></span>
+            <span> Mejor: <strong id="best-score" class="text-white">0</strong> </span>
+          </div>
+        </div>
+      </header>
+
+      <main class="relative flex flex-1 items-center justify-center p-3 sm:p-6">
+        <section
+          class="relative aspect-[9/16] max-h-[calc(100vh-7rem)] w-full max-w-[430px] overflow-hidden rounded-[2rem] border border-white/10 bg-slate-900 shadow-2xl shadow-cyan-950/30"
+        >
+          <canvas
+            id="game-canvas"
+            class="block h-full w-full touch-none bg-slate-950"
+            width="540"
+            height="960"
+            aria-label="Demo jugable del template"
+          ></canvas>
+
+          <div
+            id="overlay"
+            class="absolute inset-0 flex items-center justify-center bg-black/60 p-6 backdrop-blur-sm"
+          >
+            <div class="max-w-xs text-center">
+              <p class="text-sm font-semibold uppercase tracking-[0.25em] text-cyan-300">Demo</p>
+              <h2 id="overlay-title" class="mt-3 text-3xl font-black">Recoge estrellas</h2>
+              <p id="overlay-message" class="mt-3 text-sm leading-relaxed text-slate-300">
+                Muévete con teclado, arrastrando o tocando. Recoge estrellas y evita salirte de la
+                zona.
+              </p>
+              <button
+                id="play-button"
+                class="mt-6 rounded-full bg-cyan-300 px-6 py-3 font-black text-slate-950 transition hover:scale-105 focus:outline-none focus:ring-4 focus:ring-cyan-300/40"
+                type="button"
+              >
+                Jugar
+              </button>
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <script type="module" src="./src/js/app.js"></script>
+  </body>
+</html>
