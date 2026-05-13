@@ -27,7 +27,10 @@ export function getDifficultyMetrics(level, elapsedSeconds, config = GAME_CONFIG
       level.foxSpawnInterval / foxSpawnMultiplier,
     ),
     eggSpawnInterval: level.eggSpawnInterval * eggSpawnMultiplier,
-    eggDuration: Math.max(balance.eggDuration.minDuration, config.egg.duration / eggDurationMultiplier),
+    eggDuration: Math.max(
+      balance.eggDuration.minDuration,
+      config.egg.duration / eggDurationMultiplier,
+    ),
     foxSpeed: level.foxBaseSpeed * foxSpeedMultiplier,
     maxFoxes: Math.min(level.maxFoxesCap, level.maxFoxes + maxFoxesRamp),
   };
@@ -49,7 +52,9 @@ export function validateBalanceConfig(config = GAME_CONFIG) {
   const errors = [];
   const levelEntries = Object.entries(config.levels ?? {});
 
-  if (levelEntries.length <= 0) errors.push('Debe existir al menos un nivel de dificultad.');
+  if (levelEntries.length <= 0) {
+    errors.push('Debe existir al menos un nivel de dificultad.');
+  }
   if (config.egg.duration <= 0) errors.push('egg.duration debe ser mayor que cero.');
   if (config.egg.warningTime >= config.egg.duration) {
     errors.push('egg.warningTime debe ser menor que egg.duration.');
@@ -119,16 +124,24 @@ function validateLevel(levelKey, level, config, errors) {
     const metrics = getDifficultyMetrics(level, elapsedSeconds, config);
 
     if (metrics.foxSpawnInterval <= 0 || metrics.eggSpawnInterval <= 0) {
-      errors.push(`levels.${levelKey} genera intervalos imposibles en ${elapsedSeconds}s.`);
+      errors.push(
+        `levels.${levelKey} genera intervalos imposibles en ${elapsedSeconds}s.`,
+      );
     }
     if (metrics.eggDuration < config.balance.eggDuration.minDuration) {
-      errors.push(`levels.${levelKey} baja de la duración mínima de huevo en ${elapsedSeconds}s.`);
+      errors.push(
+        `levels.${levelKey} baja de la duración mínima de huevo en ${elapsedSeconds}s.`,
+      );
     }
     if (metrics.maxFoxes < 0 || metrics.maxFoxes > level.maxFoxesCap) {
-      errors.push(`levels.${levelKey} genera un máximo de zorros inválido en ${elapsedSeconds}s.`);
+      errors.push(
+        `levels.${levelKey} genera un máximo de zorros inválido en ${elapsedSeconds}s.`,
+      );
     }
     if (metrics.foxSpeed <= 0) {
-      errors.push(`levels.${levelKey} genera velocidad de zorro inválida en ${elapsedSeconds}s.`);
+      errors.push(
+        `levels.${levelKey} genera velocidad de zorro inválida en ${elapsedSeconds}s.`,
+      );
     }
   }
 }
@@ -137,16 +150,22 @@ function validateLevelSeparation(config, errors) {
   const { easy, medium, hard } = config.levels;
   if (!easy || !medium || !hard) return;
 
-  if (!(easy.firstFoxDelay > medium.firstFoxDelay && medium.firstFoxDelay > hard.firstFoxDelay)) {
+  if (
+    !(easy.firstFoxDelay > medium.firstFoxDelay && medium.firstFoxDelay > hard.firstFoxDelay)
+  ) {
     errors.push('El primer zorro debe llegar antes al subir de fácil a medio y difícil.');
   }
-  if (!(easy.firstEggDelay < medium.firstEggDelay && medium.firstEggDelay < hard.firstEggDelay)) {
+  if (
+    !(easy.firstEggDelay < medium.firstEggDelay && medium.firstEggDelay < hard.firstEggDelay)
+  ) {
     errors.push('El primer huevo debe tardar más al subir de fácil a medio y difícil.');
   }
   if (!(easy.foxBaseSpeed < medium.foxBaseSpeed && medium.foxBaseSpeed < hard.foxBaseSpeed)) {
     errors.push('La velocidad base de zorros debe separar fácil, medio y difícil.');
   }
-  if (!(easy.foxSpawnInterval > medium.foxSpawnInterval && medium.foxSpawnInterval > hard.foxSpawnInterval)) {
+  if (
+    !(easy.foxSpawnInterval > medium.foxSpawnInterval && medium.foxSpawnInterval > hard.foxSpawnInterval)
+  ) {
     errors.push('El spawn de zorros debe ser más frecuente al subir dificultad.');
   }
   if (!(easy.maxFoxesCap < medium.maxFoxesCap && medium.maxFoxesCap < hard.maxFoxesCap)) {
