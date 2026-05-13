@@ -80,6 +80,29 @@ export class Renderer {
     ctx.restore();
   }
 
+  drawModeOverlay(visuals) {
+    if (!visuals?.nightAlpha) return;
+
+    const ctx = this.context;
+    const radius = visuals.spotlightRadius ?? 170;
+    const gradient = ctx.createRadialGradient(
+      this.width / 2,
+      this.height * 0.56,
+      radius * 0.22,
+      this.width / 2,
+      this.height * 0.56,
+      radius,
+    );
+
+    ctx.save();
+    gradient.addColorStop(0, 'rgba(8, 16, 42, 0)');
+    gradient.addColorStop(0.72, `rgba(8, 16, 42, ${visuals.nightAlpha * 0.7})`);
+    gradient.addColorStop(1, `rgba(8, 16, 42, ${visuals.nightAlpha})`);
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, this.width, this.height);
+    ctx.restore();
+  }
+
   drawEgg(egg) {
     const ctx = this.context;
     const pulse = 1 + Math.sin(egg.age * GAME_CONFIG.egg.pulseSpeed) * 0.05;

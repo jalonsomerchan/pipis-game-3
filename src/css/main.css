@@ -132,6 +132,9 @@ button {
   display: grid;
   place-items: center;
   padding: 1.1rem;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
   background:
     radial-gradient(circle at 50% 18%, rgba(255, 219, 140, 0.22), transparent 14rem),
     linear-gradient(180deg, rgba(24, 11, 6, 0.18), rgba(24, 11, 6, 0.68));
@@ -140,6 +143,10 @@ button {
 
 .overlay[hidden] {
   display: none;
+}
+
+.overlay[data-panel-scroll='top'] {
+  place-items: start center;
 }
 
 .overlay[data-feedback='record']::before,
@@ -170,6 +177,10 @@ button {
 
 .panel {
   width: min(100%, 21.5rem);
+  max-height: calc(100dvh - 2.2rem - var(--safe-bottom));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
   padding: 1.25rem;
   text-align: center;
   border: 1px solid var(--line);
@@ -364,6 +375,10 @@ button:hover {
 @media (max-width: 430px) {
   .game-stage {
     padding: 0;
+  }
+
+  .overlay {
+    padding: 0.8rem;
   }
 
   .panel {
