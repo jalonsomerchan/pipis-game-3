@@ -101,7 +101,9 @@ export function getModeHud(mode, state, { elapsedTime }) {
 }
 
 export function updateWaveSpawns(mode, state, { deltaTime, foxesAlive, maxFoxes }) {
-  if (mode.id !== GAME_MODE_IDS.foxWaves || state.wavesComplete) return { count: 0, speedMultiplier: 1 };
+  if (mode.id !== GAME_MODE_IDS.foxWaves || state.wavesComplete) {
+    return { count: 0, speedMultiplier: 1 };
+  }
 
   if (state.pendingWaveFoxes <= 0 && foxesAlive <= 0) {
     state.completedWaves = state.wave;
@@ -123,7 +125,9 @@ export function updateWaveSpawns(mode, state, { deltaTime, foxesAlive, maxFoxes 
   }
 
   state.waveSpawnTimer = Math.max(0, state.waveSpawnTimer - deltaTime);
-  if (state.waveSpawnTimer > 0 || state.pendingWaveFoxes <= 0) return { count: 0, speedMultiplier: 1 };
+  if (state.waveSpawnTimer > 0 || state.pendingWaveFoxes <= 0) {
+    return { count: 0, speedMultiplier: 1 };
+  }
 
   const availableSlots = Math.max(0, maxFoxes - foxesAlive);
   const count = Math.min(mode.rules.spawnBatchSize, state.pendingWaveFoxes, availableSlots);
@@ -147,7 +151,9 @@ export function buildModeResult(mode, state, { elapsedTime, chickens, outcome })
     return {
       ...base,
       title: outcome === 'victory' ? '¡10 Pipis conseguidas!' : 'Las Pipis cayeron',
-      summary: `Has incubado ${state.collectedPipis}/${mode.rules.targetPipis} Pipis en ${formatTime(elapsedTime)}.`,
+      summary: `Has incubado ${state.collectedPipis}/${mode.rules.targetPipis} Pipis en ${formatTime(
+        elapsedTime,
+      )}.`,
       detailLabel: 'Tiempo',
       detailValue: formatTime(elapsedTime),
     };
