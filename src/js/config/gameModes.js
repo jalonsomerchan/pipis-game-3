@@ -117,7 +117,9 @@ export function assertGameModes(levels, modes = GAME_MODES) {
 }
 
 function validateModeIdentity(modeId, mode, errors) {
-  if (!mode?.id || mode.id !== modeId) errors.push(`El modo ${modeId} necesita un id coherente.`);
+  if (!mode?.id || mode.id !== modeId) {
+    errors.push(`El modo ${modeId} necesita un id coherente.`);
+  }
   if (!mode?.label) errors.push(`El modo ${modeId} necesita nombre visible.`);
   if (!mode?.description) errors.push(`El modo ${modeId} necesita descripción visible.`);
   if (!mode?.objective) errors.push(`El modo ${modeId} necesita objetivo visible.`);
@@ -138,12 +140,18 @@ function validateModeRules(modeId, rules, errors) {
   if (modeId === GAME_MODE_IDS.foxWaves) {
     if (rules.maxWaves <= 0) errors.push('Oleadas necesita al menos una oleada.');
     if (rules.startFoxes <= 0) errors.push('Oleadas necesita zorros iniciales positivos.');
-    if (rules.maxSimultaneousFoxes <= 0) errors.push('Oleadas necesita límite simultáneo positivo.');
-    if (rules.spawnIntervalSeconds <= 0) errors.push('Oleadas necesita intervalo de spawn positivo.');
+    if (rules.maxSimultaneousFoxes <= 0) {
+      errors.push('Oleadas necesita límite simultáneo positivo.');
+    }
+    if (rules.spawnIntervalSeconds <= 0) {
+      errors.push('Oleadas necesita intervalo de spawn positivo.');
+    }
     if (rules.restSeconds <= 0 || rules.minRestSeconds <= 0) {
       errors.push('Oleadas necesita descansos positivos.');
     }
-    if (rules.maxSpeedMultiplier < 1) errors.push('Oleadas necesita multiplicador de velocidad válido.');
+    if (rules.maxSpeedMultiplier < 1) {
+      errors.push('Oleadas necesita multiplicador de velocidad válido.');
+    }
   }
 }
 
