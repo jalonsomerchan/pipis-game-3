@@ -141,21 +141,34 @@ export class Renderer {
 
   drawScareEffect(effect) {
     const progress = 1 - effect.life / effect.duration;
-    const radius =
-      (effect.type === 'hatch' ? 14 : 22) + progress * (effect.type === 'hatch' ? 44 : 62);
     const alpha = Math.max(0, 1 - progress);
+    const style = this.#feedbackStyle(effect.type);
+    const radius = style.radius + progress * style.growth;
     const ctx = this.context;
 
     ctx.save();
-    ctx.strokeStyle = `rgba(255, 246, 166, ${alpha})`;
-    ctx.lineWidth = 7;
+    ctx.globalAlpha = alpha;
+    ctx.strokeStyle = style.stroke;
+    ctx.lineWidth = style.lineWidth;
     ctx.beginPath();
     ctx.arc(effect.x, effect.y, radius, 0, Math.PI * 2);
     ctx.stroke();
-    ctx.fillStyle = `rgba(${effect.type === 'hatch' ? '255, 214, 89' : '255, 94, 61'}, ${alpha * 0.8})`;
-    ctx.font = '900 30px ui-rounded, system-ui, sans-serif';
+
+    ctx.fillStyle = style.fill;
+    ctx.font = `${style.fontWeight} ${style.fontSize}px ui-rounded, system-ui, sans-serif`;
     ctx.textAlign = 'center';
-    ctx.fillText(effect.type === 'hatch' ? '+' : '!', effect.x, effect.y - radius * 0.45);
+    ctx.fillText(style.label, effect.x, effect.y - radius * 0.45);
+
+    for (let index = 0; index < style.particles; index += 1) {
+      const angle = (Math.PI * 2 * index) / style.particles;
+      const distance = radius * (0.35 + progress * 0.65);
+      const size = style.particleSize * (1 - progress * 0.35);
+
+      ctx.beginPath();
+      ctx.arc(effect.x + Math.cos(angle) * distance, effect.y + Math.sin(angle) * distance, size, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
     ctx.restore();
   }
 
@@ -208,6 +221,73 @@ export class Renderer {
     const remainder = String(safeSeconds % 60).padStart(2, '0');
 
     return `${minutes}:${remainder}`;
+  }
+
+  #feedbackStyle(type = 'scare') {
+    const styles = {
+      scare: {
+        label: '!',
+        stroke: 'rgba(255, 246, 166, 0.96)',
+        fill: 'rgba(255, 94, 61, 0.9)',
+        lineWidth: 7,
+        radius: 22,
+        growth: 62,
+        particles: 8,
+        particleSize: 3.8,
+        fontSize: 30,
+        fontWeight: 900,
+      },
+      hatch: {
+        label: '+',
+        stroke: 'rgba(255, 246, 166, 0.96)',
+        fill: 'rgba(255, 214, 89, 0.94)',
+        lineWidth: 7,
+        radius: 14,
+        growth: 44,
+        particles: 10,
+        particleSize: 3.4,
+        fontSize: 30,
+        fontWeight: 900,
+      },
+      lost: {
+        label: '×',
+        stroke: 'rgba(255, 130, 105, 0.92)',
+        fill: 'rgba(255, 104, 82, 0.9)',
+        lineWidth: 6,
+        radius: 18,
+        growth: 54,
+        particles: 6,
+        particleSize: 4.4,
+        fontSize: 32,
+        fontWeight: 900,
+      },
+      mission: {
+        label: '✓',
+        stroke: 'rgba(187, 247, 208, 0.95)',
+        fill: 'rgba(134, 239, 172, 0.92)',
+        lineWidth: 8,
+        radius: 38,
+        growth: 92,
+        particles: 14,
+        particleSize: 4.2,
+        fontSize: 42,
+        fontWeight: 950,
+      },
+      gameOver: {
+        label: 'fin',
+        stroke: 'rgba(255, 180, 150, 0.84)',
+        fill: 'rgba(255, 120, 90, 0.9)',
+        lineWidth: 8,
+        radius: 44,
+        growth: 130,
+        particles: 12,
+        particleSize: 4.4,
+        fontSize: 34,
+        fontWeight: 950,
+      },
+    };
+
+    return styles[type] ?? styles.scare;
   }
 
   #roundedRect(x, y, width, height, radius) {
