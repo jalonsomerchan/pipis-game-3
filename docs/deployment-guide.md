@@ -28,7 +28,19 @@ Para subruta:
 base: '/nombre-repo/';
 ```
 
-Si se añade una variable de entorno, documentarla en README y en esta guía.
+Este proyecto usa `GITHUB_PAGES=true` en el workflow para compilar con la subruta pública de GitHub Pages:
+
+```bash
+GITHUB_PAGES=true npm run build
+```
+
+Con esa variable activa, la base de Vite es:
+
+```js
+base: '/pipis-game-3/';
+```
+
+Sin esa variable, el build y el servidor de desarrollo mantienen compatibilidad con raíz (`/`).
 
 ## Rutas
 
@@ -52,13 +64,21 @@ Preferir rutas relativas o imports gestionados por Vite.
 
 ## GitHub Pages
 
-Si se añade workflow de deploy:
+El workflow `.github/workflows/deploy-pages.yml` publica `dist/` cuando hay push a `main` o ejecución manual.
+
+Pasos del workflow:
 
 1. `npm ci`
 2. `npm run lint`
 3. `npm run format:check`
-4. `npm run build`
-5. desplegar `dist/`
+4. `GITHUB_PAGES=true npm run build`
+5. desplegar `dist/` con GitHub Pages Actions
+
+La URL esperada es:
+
+```txt
+https://jalonsomerchan.github.io/pipis-game-3/
+```
 
 ## Checklist
 
