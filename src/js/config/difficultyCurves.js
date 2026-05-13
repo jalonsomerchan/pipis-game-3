@@ -20,6 +20,11 @@ export function getDifficultyMetrics(level, elapsedSeconds, config = GAME_CONFIG
   );
   const eggDurationMultiplier = 1 + minutes * balance.eggDuration.reductionPerMinute;
   const maxFoxesRamp = Math.floor(minutes * balance.maxFoxes.increasePerMinute);
+  const extraFoxes = Math.min(
+    balance.foxWave.maxExtraFoxes,
+    Math.floor(minutes * balance.foxWave.extraFoxChancePerMinute),
+  );
+  const waveChance = clamp(minutes * balance.foxWave.extraFoxChancePerMinute, 0, 1);
 
   return {
     foxSpawnInterval: Math.max(
@@ -33,6 +38,9 @@ export function getDifficultyMetrics(level, elapsedSeconds, config = GAME_CONFIG
     ),
     foxSpeed: level.foxBaseSpeed * foxSpeedMultiplier,
     maxFoxes: Math.min(level.maxFoxesCap, level.maxFoxes + maxFoxesRamp),
+    foxWaveMin: 1 + extraFoxes,
+    foxWaveMax: 1 + Math.min(balance.foxWave.maxExtraFoxes, extraFoxes + 1),
+    foxWaveChance: waveChance,
   };
 }
 
@@ -70,6 +78,12 @@ export function validateBalanceConfig(config = GAME_CONFIG) {
   }
   if (config.balance.eggSpawn.maxMultiplier < 1) {
     errors.push('balance.eggSpawn.maxMultiplier no puede ser menor que 1.');
+  }
+  if (config.balance.foxWave.maxExtraFoxes < 1) {
+    errors.push('balance.foxWave.maxExtraFoxes debe permitir oleadas de más de un zorro.');
+  }
+  if (config.balance.foxWave.extraFoxChancePerMinute <= 0) {
+    errors.push('balance.foxWave.extraFoxChancePerMinute debe ser mayor que cero.');
   }
 
   for (const [levelKey, level] of levelEntries) {
@@ -131,6 +145,9 @@ function validateLevel(levelKey, level, config, errors) {
     }
     if (metrics.maxFoxes < 0 || metrics.maxFoxes > level.maxFoxesCap) {
       errors.push(`levels.${levelKey} genera un máximo de zorros inválido en ${elapsedSeconds}s.`);
+    }
+    if (metrics.foxWaveMax > level.maxFoxesCap) {
+      errors.push(`levels.${levelKey} genera oleadas mayores que su techo en ${elapsedSeconds}s.`);
     }
     if (metrics.foxSpeed <= 0) {
       errors.push(`levels.${levelKey} genera velocidad de zorro inválida en ${elapsedSeconds}s.`);
