@@ -1,8 +1,18 @@
-import { GAME_CONFIG } from '../config/gameConfig.js';
 import { getDifficultyMetrics } from '../config/difficultyCurves.js';
+import { GAME_CONFIG } from '../config/gameConfig.js';
+import { DEFAULT_GAME_MODE_ID, getGameMode } from '../config/gameModes.js';
 import { Chicken } from '../entities/Chicken.js';
 import { Egg } from '../entities/Egg.js';
 import { Fox } from '../entities/Fox.js';
+import {
+  applyModeActions,
+  buildModeResult,
+  createModeState,
+  getModeFinish,
+  getModeHud,
+  updateModeTimers,
+  updateWaveSpawns,
+} from '../modes/modeRules.js';
 import { getDistance, randomBetween, randomInt } from '../utils/math.js';
 
 const TUTORIAL_STEPS = {
@@ -23,10 +33,12 @@ export class GameScene {
     this.onFeedback = onFeedback;
   }
 
-  reset(levelKey) {
+  reset(levelKey, modeKey = DEFAULT_GAME_MODE_ID) {
     this.mode = 'game';
     this.levelKey = levelKey;
     this.level = GAME_CONFIG.levels[levelKey];
+    this.gameMode = getGameMode(modeKey);
+    this.modeState = createModeState(this.gameMode);
     this.elapsedTime = 0;
     this.foxTimer = this.level.firstFoxDelay;
     this.eggTimer = this.level.firstEggDelay;
@@ -46,6 +58,8 @@ export class GameScene {
   resetTutorial() {
     this.mode = 'tutorial';
     this.level = { label: 'Tutorial' };
+    this.gameMode = null;
+    this.modeState = null;
     this.elapsedTime = 0;
     this.foxTimer = Infinity;
     this.eggTimer = Infinity;
@@ -76,7 +90,9 @@ export class GameScene {
       return;
     }
 
-    this.#handleActions();
+    const actions = this.#handleActions();
+    applyModeActions(this.gameMode, this.modeState, actions);
+    updateModeTimers(this.gameMode, this.modeState, deltaTime);
     this.#updateSpawns(deltaTime);
 
     const barn = this.#barnBounds();
@@ -89,17 +105,7 @@ export class GameScene {
 
     this.eggs = this.eggs.filter((egg) => !egg.isExpired);
     this.foxes = this.foxes.filter((fox) => !fox.isGone);
-
-    if (this.chickens.length <= 0) {
-      this.isFinished = true;
-      this.#queueFeedback(
-        'gameOver',
-        GAME_CONFIG.canvas.width / 2,
-        GAME_CONFIG.canvas.height / 2,
-      );
-      this.onGameOver(this.elapsedTime);
-    }
-
+    this.#finishIfNeeded();
     this.#emitStats();
   }
 
@@ -130,11 +136,7 @@ export class GameScene {
     }
 
     this.effects.forEach((effect) => renderer.drawScareEffect(effect));
-    renderer.drawHud({
-      time: this.elapsedTime,
-      chickens: this.chickens.length,
-      levelLabel: this.level.label,
-    });
+    renderer.drawHud(this.#hudStats());
 
     if (this.mode === 'tutorial') {
       renderer.drawTutorialMessage(this.tutorialMessage);
@@ -293,31 +295,46 @@ export class GameScene {
   }
 
   #updateSpawns(deltaTime) {
-    this.foxTimer -= deltaTime;
     this.eggTimer -= deltaTime;
 
-    if (this.foxTimer <= 0) {
-      this.#spawnFoxWave();
-      this.foxTimer = this.#difficultyMetrics().foxSpawnInterval;
+    if (this.gameMode.rules.standardFoxSpawns) {
+      this.foxTimer -= deltaTime;
+
+      if (this.foxTimer <= 0) {
+        this.#spawnRandomFoxWave();
+        this.foxTimer = this.#difficultyMetrics().foxSpawnInterval;
+      }
     }
 
     if (this.eggTimer <= 0) {
       this.#spawnEgg();
       this.eggTimer = this.#difficultyMetrics().eggSpawnInterval;
     }
+
+    const plan = updateWaveSpawns(this.gameMode, this.modeState, {
+      deltaTime,
+      foxesAlive: this.foxes.length,
+      maxFoxes: this.#currentMaxFoxes(),
+    });
+
+    if (plan.count > 0) this.#spawnFoxes(plan.count, plan.speedMultiplier);
   }
 
-  #spawnFoxWave() {
+  #spawnRandomFoxWave() {
     const metrics = this.#difficultyMetrics();
-    const availableSlots = Math.max(0, metrics.maxFoxes - this.foxes.length);
-    if (availableSlots <= 0) return;
-
     const waveTarget = Math.random() < metrics.foxWaveChance ? metrics.foxWaveMax : metrics.foxWaveMin;
-    const foxesToSpawn = Math.min(availableSlots, waveTarget);
+
+    this.#spawnFoxes(waveTarget, 1);
+  }
+
+  #spawnFoxes(count, speedMultiplier) {
+    const metrics = this.#difficultyMetrics();
+    const availableSlots = Math.max(0, this.#currentMaxFoxes() - this.foxes.length);
+    const foxesToSpawn = Math.min(availableSlots, count);
 
     for (let index = 0; index < foxesToSpawn; index += 1) {
       const position = this.#randomEdgePosition();
-      this.foxes.push(new Fox(position, metrics.foxSpeed * randomBetween(0.94, 1.08)));
+      this.foxes.push(new Fox(position, metrics.foxSpeed * speedMultiplier * randomBetween(0.94, 1.08)));
       this.effects.push({
         type: 'spawn',
         x: position.x,
@@ -373,6 +390,25 @@ export class GameScene {
     }
   }
 
+  #finishIfNeeded() {
+    const finish = getModeFinish(this.gameMode, this.modeState, {
+      elapsedTime: this.elapsedTime,
+      chickens: this.chickens.length,
+    });
+
+    if (!finish) return;
+
+    this.isFinished = true;
+    this.#queueFeedback(finish.feedback, GAME_CONFIG.canvas.width / 2, GAME_CONFIG.canvas.height / 2);
+    this.onGameOver(
+      buildModeResult(this.gameMode, this.modeState, {
+        elapsedTime: this.elapsedTime,
+        chickens: this.chickens.length,
+        outcome: finish.outcome,
+      }),
+    );
+  }
+
   #updateEffects(deltaTime) {
     for (const effect of this.effects) {
       effect.life -= deltaTime;
@@ -399,6 +435,13 @@ export class GameScene {
 
   #difficultyMetrics() {
     return getDifficultyMetrics(this.level, this.elapsedTime);
+  }
+
+  #currentMaxFoxes() {
+    const maxFoxes = this.#difficultyMetrics().maxFoxes;
+    const waveLimit = this.gameMode.rules.maxSimultaneousFoxes;
+
+    return waveLimit ? Math.min(maxFoxes, waveLimit) : maxFoxes;
   }
 
   #queueFeedback(type, x, y) {
@@ -436,10 +479,24 @@ export class GameScene {
   }
 
   #emitStats() {
-    this.onStats({
+    this.onStats(this.#hudStats());
+  }
+
+  #hudStats() {
+    if (this.mode === 'tutorial') {
+      return {
+        time: this.elapsedTime,
+        chickens: this.chickens.length,
+        levelLabel: this.level.label,
+      };
+    }
+
+    return {
       time: this.elapsedTime,
       chickens: this.chickens.length,
       levelLabel: this.level.label,
-    });
+      modeLabel: this.gameMode.shortLabel,
+      ...getModeHud(this.gameMode, this.modeState, { elapsedTime: this.elapsedTime }),
+    };
   }
 }
