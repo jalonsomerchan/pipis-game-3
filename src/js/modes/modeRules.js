@@ -199,7 +199,10 @@ export function buildModeResult(mode, state, { elapsedTime, chickens, outcome })
 }
 
 function getComboMultiplier(mode, streak) {
-  return Math.min(mode.rules.maxMultiplier, 1 + Math.max(0, streak - 1) * mode.rules.multiplierStep);
+  return Math.min(
+    mode.rules.maxMultiplier,
+    1 + Math.max(0, streak - 1) * mode.rules.multiplierStep,
+  );
 }
 
 function getWaveSize(mode, wave) {

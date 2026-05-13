@@ -9,7 +9,7 @@ import {
   buildModeResult,
   createModeState,
   getModeFinish,
-  getModeHud,
+  getModeNud,
   updateModeTimers,
   updateWaveSpawns,
 } from '../modes/modeRules.js';
@@ -166,7 +166,7 @@ export class GameScene {
       this.tutorialStep = TUTORIAL_STEPS.egg;
       this.tutorialTimer = 0;
       this.foxes = [];
-      this.eggs = [new Egg({ x: 282, y: 690 }, 10)];
+      this.eggs = [new Egg({x: 282, y: 690 }, 10)];
       this.tutorialMessage =
         'Buen toque. Ahora toca el huevo antes de que se enfríe: dará una Pipi nueva.';
     }
@@ -322,7 +322,8 @@ export class GameScene {
 
   #spawnRandomFoxWave() {
     const metrics = this.#difficultyMetrics();
-    const waveTarget = Math.random() < metrics.foxWaveChance ? metrics.foxWaveMax : metrics.foxWaveMin;
+    const waveTarget =
+      Math.random() < metrics.foxWaveChance ? metrics.foxWaveMax : metrics.foxWaveMin;
 
     this.#spawnFoxes(waveTarget, 1);
   }
@@ -401,7 +402,11 @@ export class GameScene {
     if (!finish) return;
 
     this.isFinished = true;
-    this.#queueFeedback(finish.feedback, GAME_CONFIG.canvas.width / 2, GAME_CONFIG.canvas.height / 2);
+    this.#queueFeedback(
+      finish.feedback,
+      GAME_CONFIG.canvas.width / 2,
+      GAME_CONFIG.canvas.height / 2,
+    );
     this.onGameOver(
       buildModeResult(this.gameMode, this.modeState, {
         elapsedTime: this.elapsedTime,
