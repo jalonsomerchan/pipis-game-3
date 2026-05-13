@@ -165,7 +165,13 @@ export class Renderer {
       const size = style.particleSize * (1 - progress * 0.35);
 
       ctx.beginPath();
-      ctx.arc(effect.x + Math.cos(angle) * distance, effect.y + Math.sin(angle) * distance, size, 0, Math.PI * 2);
+      ctx.arc(
+        effect.x + Math.cos(angle) * distance,
+        effect.y + Math.sin(angle) * distance,
+        size,
+        0,
+        Math.PI * 2,
+      );
       ctx.fill();
     }
 
