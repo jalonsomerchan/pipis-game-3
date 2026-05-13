@@ -124,24 +124,16 @@ function validateLevel(levelKey, level, config, errors) {
     const metrics = getDifficultyMetrics(level, elapsedSeconds, config);
 
     if (metrics.foxSpawnInterval <= 0 || metrics.eggSpawnInterval <= 0) {
-      errors.push(
-        `levels.${levelKey} genera intervalos imposibles en ${elapsedSeconds}s.`,
-      );
+      errors.push(`levels.${levelKey} genera intervalos imposibles en ${elapsedSeconds}s.`);
     }
     if (metrics.eggDuration < config.balance.eggDuration.minDuration) {
-      errors.push(
-        `levels.${levelKey} baja de la duración mínima de huevo en ${elapsedSeconds}s.`,
-      );
+      errors.push(`levels.${levelKey} baja de la duración mínima de huevo en ${elapsedSeconds}s.`);
     }
     if (metrics.maxFoxes < 0 || metrics.maxFoxes > level.maxFoxesCap) {
-      errors.push(
-        `levels.${levelKey} genera un máximo de zorros inválido en ${elapsedSeconds}s.`,
-      );
+      errors.push(`levels.${levelKey} genera un máximo de zorros inválido en ${elapsedSeconds}s.`);
     }
     if (metrics.foxSpeed <= 0) {
-      errors.push(
-        `levels.${levelKey} genera velocidad de zorro inválida en ${elapsedSeconds}s.`,
-      );
+      errors.push(`levels.${levelKey} genera velocidad de zorro inválida en ${elapsedSeconds}s.`);
     }
   }
 }
@@ -150,21 +142,20 @@ function validateLevelSeparation(config, errors) {
   const { easy, medium, hard } = config.levels;
   if (!easy || !medium || !hard) return;
 
-  if (
-    !(easy.firstFoxDelay > medium.firstFoxDelay && medium.firstFoxDelay > hard.firstFoxDelay)
-  ) {
+  if (!(easy.firstFoxDelay > medium.firstFoxDelay && medium.firstFoxDelay > hard.firstFoxDelay)) {
     errors.push('El primer zorro debe llegar antes al subir de fácil a medio y difícil.');
   }
-  if (
-    !(easy.firstEggDelay < medium.firstEggDelay && medium.firstEggDelay < hard.firstEggDelay)
-  ) {
+  if (!(easy.firstEggDelay < medium.firstEggDelay && medium.firstEggDelay < hard.firstEggDelay)) {
     errors.push('El primer huevo debe tardar más al subir de fácil a medio y difícil.');
   }
   if (!(easy.foxBaseSpeed < medium.foxBaseSpeed && medium.foxBaseSpeed < hard.foxBaseSpeed)) {
     errors.push('La velocidad base de zorros debe separar fácil, medio y difícil.');
   }
   if (
-    !(easy.foxSpawnInterval > medium.foxSpawnInterval && medium.foxSpawnInterval > hard.foxSpawnInterval)
+    !(
+      easy.foxSpawnInterval > medium.foxSpawnInterval &&
+      medium.foxSpawnInterval > hard.foxSpawnInterval
+    )
   ) {
     errors.push('El spawn de zorros debe ser más frecuente al subir dificultad.');
   }
