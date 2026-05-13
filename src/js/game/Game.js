@@ -2,6 +2,7 @@ import { loadSprites } from '../assets/loadSprites.js';
 import { GAME_CONFIG } from '../config/gameConfig.js';
 import { GameScene } from '../scenes/GameScene.js';
 import { readNumber, writeNumber } from '../utils/storage.js';
+import { Feedback } from './Feedback.js';
 import { Input } from './Input.js';
 import { Renderer } from './Renderer.js';
 
@@ -15,6 +16,7 @@ export class Game {
     this.elements = elements;
     this.renderer = new Renderer(elements.canvas, GAME_CONFIG.canvas);
     this.input = new Input(elements.canvas);
+    this.feedback = new Feedback();
     this.bestTime = readNumber(GAME_CONFIG.storage.bestTimeKey);
 
     this.#bindEvents();
@@ -36,6 +38,7 @@ export class Game {
           onStats: (stats) => this.#setStats(stats),
           onGameOver: (time) => this.#finish(time),
           onTutorialComplete: () => this.#finishTutorial(),
+          onFeedback: (event) => this.#handleFeedback(event),
         });
         this.#renderIdleScene();
         this.#showMenu();
@@ -48,6 +51,7 @@ export class Game {
   startLevel(levelKey) {
     if (!this.scene) return;
 
+    this.feedback.prime();
     this.stop();
     this.scene.reset(levelKey);
     this.elements.overlay.hidden = true;
@@ -61,6 +65,7 @@ export class Game {
   startTutorial() {
     if (!this.scene) return;
 
+    this.feedback.prime();
     this.stop();
     this.scene.resetTutorial();
     this.elements.overlay.hidden = true;
@@ -74,6 +79,7 @@ export class Game {
   resume() {
     if (!this.scene || !this.#mode.startsWith('paused')) return;
 
+    this.feedback.prime();
     this.elements.overlay.hidden = true;
     this.elements.pauseButton.hidden = false;
     this.#mode = this.#mode === 'paused-tutorial' ? 'tutorial-playing' : 'playing';
@@ -138,20 +144,47 @@ export class Game {
   #finish(time) {
     this.stop();
 
-    if (time > this.bestTime) {
+    const isRecord = time > this.bestTime;
+    if (isRecord) {
       this.bestTime = time;
       writeNumber(GAME_CONFIG.storage.bestTimeKey, time);
+      this.#handleFeedback({ type: 'record' });
+      this.#announce('¡Nuevo récord de supervivencia!');
     }
 
     this.elements.resultTime.textContent = this.renderer.formatTime(time);
     this.elements.bestTime.textContent = this.renderer.formatTime(this.bestTime);
     this.elements.pauseButton.hidden = true;
     this.#mode = 'results';
-    this.#setOverlayMode('results');
+    this.#setOverlayMode('results', isRecord ? 'record' : 'game-over');
   }
 
   #setStats() {
     // Stats are rendered in-canvas so the game can run fullscreen without an external top bar.
+  }
+
+  #handleFeedback({ type }) {
+    this.feedback.play(type);
+    this.#announce(this.#feedbackMessage(type));
+  }
+
+  #feedbackMessage(type) {
+    const messages = {
+      scare: 'Zorro espantado.',
+      hatch: 'Huevo incubado. Nueva Pipi.',
+      lost: 'Has perdido una Pipi.',
+      mission: 'Tutorial completado.',
+      record: 'Nuevo récord.',
+      gameOver: 'Fin de la partida.',
+    };
+
+    return messages[type] ?? '';
+  }
+
+  #announce(message) {
+    if (!this.elements.feedbackStatus || !message) return;
+
+    this.elements.feedbackStatus.textContent = message;
   }
 
   #renderIdleScene() {
@@ -191,7 +224,7 @@ export class Game {
     this.stop();
     this.elements.pauseButton.hidden = true;
     this.#mode = 'tutorial-done';
-    this.#setOverlayMode('tutorialDone');
+    this.#setOverlayMode('tutorialDone', 'mission');
   }
 
   #isPlayingMode() {
@@ -221,9 +254,10 @@ export class Game {
     }
   }
 
-  #setOverlayMode(mode) {
+  #setOverlayMode(mode, feedback = '') {
     this.elements.overlay.hidden = false;
     this.elements.overlay.dataset.mode = mode;
+    this.elements.overlay.dataset.feedback = feedback;
 
     for (const panel of this.elements.panels) {
       panel.hidden = panel.dataset.panel !== mode;

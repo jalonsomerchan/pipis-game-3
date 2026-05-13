@@ -14,12 +14,13 @@ const TUTORIAL_STEPS = {
 };
 
 export class GameScene {
-  constructor({ input, sprites, onStats, onGameOver, onTutorialComplete }) {
+  constructor({ input, sprites, onStats, onGameOver, onTutorialComplete, onFeedback }) {
     this.input = input;
     this.sprites = sprites;
     this.onStats = onStats;
     this.onGameOver = onGameOver;
     this.onTutorialComplete = onTutorialComplete;
+    this.onFeedback = onFeedback;
   }
 
   reset(levelKey) {
@@ -90,6 +91,7 @@ export class GameScene {
 
     if (this.chickens.length <= 0) {
       this.isFinished = true;
+      this.#queueFeedback('gameOver', GAME_CONFIG.canvas.width / 2, GAME_CONFIG.canvas.height / 2);
       this.onGameOver(this.elapsedTime);
     }
 
@@ -178,6 +180,7 @@ export class GameScene {
 
     if (this.tutorialStep === TUTORIAL_STEPS.done && this.tutorialTimer > 3.4) {
       this.isFinished = true;
+      this.#queueFeedback('mission', GAME_CONFIG.canvas.width / 2, 710);
       this.onTutorialComplete();
     }
   }
@@ -224,11 +227,13 @@ export class GameScene {
   #scareFox(fox) {
     fox.scare();
     this.effects.push({
+      type: 'scare',
       x: fox.x,
       y: fox.y,
       life: GAME_CONFIG.effects.scareDuration,
       duration: GAME_CONFIG.effects.scareDuration,
     });
+    this.#queueFeedback('scare', fox.x, fox.y);
   }
 
   #hatchEggAt(tap) {
@@ -244,6 +249,7 @@ export class GameScene {
       life: GAME_CONFIG.effects.hatchDuration,
       duration: GAME_CONFIG.effects.hatchDuration,
     });
+    this.#queueFeedback('hatch', egg.x, egg.y);
 
     return true;
   }
@@ -325,7 +331,19 @@ export class GameScene {
     const eaten = new Set(this.foxes.map((fox) => fox.eatenTarget).filter(Boolean));
     if (eaten.size <= 0) return;
 
+    const lostChickens = this.chickens.filter((chicken) => eaten.has(chicken));
     this.chickens = this.chickens.filter((chicken) => !eaten.has(chicken));
+
+    for (const chicken of lostChickens) {
+      this.effects.push({
+        type: 'lost',
+        x: chicken.x,
+        y: chicken.y,
+        life: GAME_CONFIG.effects.lostDuration,
+        duration: GAME_CONFIG.effects.lostDuration,
+      });
+      this.#queueFeedback('lost', chicken.x, chicken.y);
+    }
 
     for (const fox of this.foxes) {
       if (fox.eatenTarget) {
@@ -345,6 +363,10 @@ export class GameScene {
 
   #difficultyMetrics() {
     return getDifficultyMetrics(this.level, this.elapsedTime);
+  }
+
+  #queueFeedback(type, x, y) {
+    this.onFeedback?.({ type, x, y });
   }
 
   #randomEdgePosition() {

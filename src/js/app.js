@@ -21,6 +21,7 @@ const game = new Game({
   loadingTitle: document.querySelector('#loading-title'),
   resultTime: document.querySelector('#result-time'),
   bestTime: document.querySelector('#best-time'),
+  feedbackStatus: document.querySelector('#feedback-status'),
 });
 
 window.game = game;

@@ -7,6 +7,7 @@ npm ci
 npm run lint
 npm run format:check
 npm run check:balance
+npm run check:feedback
 npm run build
 npm run preview
 ```
@@ -58,11 +59,21 @@ npm run check:balance
 Este check falla si la configuración genera duraciones negativas, spawns imposibles, máximos de zorros
 inválidos o niveles sin separación clara entre fácil, medio y difícil.
 
+El feedback visual, sonoro y háptico se valida con:
+
+```sh
+npm run check:feedback
+```
+
+Este check falla si una acción principal no tiene sonido/vibración, si el volumen es excesivo o si un
+sonido dura demasiado para móvil.
+
 ## Checklist para PRs
 
 - ¿Pasa `npm run lint`?
 - ¿Pasa `npm run format:check`?
 - ¿Pasa `npm run check:balance` si se toca el balance?
+- ¿Pasa `npm run check:feedback` si se toca el feedback?
 - ¿Pasa `npm run build`?
 - ¿No se han roto controles móviles?
 - ¿No hay errores de consola?
