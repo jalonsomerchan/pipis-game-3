@@ -6,6 +6,7 @@
 npm ci
 npm run lint
 npm run format:check
+npm run check:balance
 npm run build
 npm run preview
 ```
@@ -43,10 +44,25 @@ Si se añaden tests, documentar:
 - casos principales,
 - integración en CI.
 
+## Checks smoke sin framework
+
+Para checks ligeros de configuración o simulación que no justifican un framework, usar scripts pequeños
+en `scripts/` y exponerlos en `package.json`.
+
+El balance de dificultad se valida con:
+
+```sh
+npm run check:balance
+```
+
+Este check falla si la configuración genera duraciones negativas, spawns imposibles, máximos de zorros
+inválidos o niveles sin separación clara entre fácil, medio y difícil.
+
 ## Checklist para PRs
 
 - ¿Pasa `npm run lint`?
 - ¿Pasa `npm run format:check`?
+- ¿Pasa `npm run check:balance` si se toca el balance?
 - ¿Pasa `npm run build`?
 - ¿No se han roto controles móviles?
 - ¿No hay errores de consola?

@@ -1,4 +1,5 @@
 import { GAME_CONFIG } from '../config/gameConfig.js';
+import { getDifficultyMetrics } from '../config/difficultyCurves.js';
 import { Chicken } from '../entities/Chicken.js';
 import { Egg } from '../entities/Egg.js';
 import { Fox } from '../entities/Fox.js';
@@ -26,8 +27,8 @@ export class GameScene {
     this.levelKey = levelKey;
     this.level = GAME_CONFIG.levels[levelKey];
     this.elapsedTime = 0;
-    this.foxTimer = 1.2;
-    this.eggTimer = this.level.eggSpawnInterval * 0.72;
+    this.foxTimer = this.level.firstFoxDelay;
+    this.eggTimer = this.level.firstEggDelay;
     this.chickens = [];
     this.eggs = [];
     this.foxes = [];
@@ -285,19 +286,20 @@ export class GameScene {
 
     if (this.foxTimer <= 0) {
       this.#spawnFox();
-      this.foxTimer = this.#currentFoxSpawnInterval();
+      this.foxTimer = this.#difficultyMetrics().foxSpawnInterval;
     }
 
     if (this.eggTimer <= 0) {
       this.#spawnEgg();
-      this.eggTimer = this.#currentEggSpawnInterval();
+      this.eggTimer = this.#difficultyMetrics().eggSpawnInterval;
     }
   }
 
   #spawnFox() {
-    if (this.foxes.length >= this.#currentMaxFoxes()) return;
+    const metrics = this.#difficultyMetrics();
+    if (this.foxes.length >= metrics.maxFoxes) return;
 
-    this.foxes.push(new Fox(this.#randomEdgePosition(), this.#currentFoxSpeed()));
+    this.foxes.push(new Fox(this.#randomEdgePosition(), metrics.foxSpeed));
   }
 
   #addChicken() {
@@ -305,7 +307,7 @@ export class GameScene {
   }
 
   #spawnEgg() {
-    this.eggs.push(new Egg(this.#randomBarnPosition(0.78), this.#currentEggDuration()));
+    this.eggs.push(new Egg(this.#randomBarnPosition(0.78), this.#difficultyMetrics().eggDuration));
   }
 
   #randomBarnPosition(spread) {
@@ -341,38 +343,8 @@ export class GameScene {
     this.effects = this.effects.filter((effect) => effect.life > 0);
   }
 
-  #currentFoxSpawnInterval() {
-    const minutes = this.elapsedTime / 60;
-    const multiplier = 1 + minutes * GAME_CONFIG.difficultyRamp.foxSpawnIntervalReductionPerMinute;
-
-    return Math.max(0.82, this.level.foxSpawnInterval / multiplier);
-  }
-
-  #currentEggSpawnInterval() {
-    const minutes = this.elapsedTime / 60;
-    const multiplier = 1 + minutes * GAME_CONFIG.difficultyRamp.eggSpawnDelayIncreasePerMinute;
-
-    return this.level.eggSpawnInterval * multiplier;
-  }
-
-  #currentEggDuration() {
-    const minutes = this.elapsedTime / 60;
-    const multiplier = 1 + minutes * GAME_CONFIG.difficultyRamp.eggDurationReductionPerMinute;
-
-    return Math.max(3.2, GAME_CONFIG.egg.duration / multiplier);
-  }
-
-  #currentFoxSpeed() {
-    const minutes = this.elapsedTime / 60;
-    const multiplier = 1 + minutes * GAME_CONFIG.difficultyRamp.foxSpeedIncreasePerMinute;
-
-    return this.level.foxBaseSpeed * multiplier;
-  }
-
-  #currentMaxFoxes() {
-    const minutes = Math.floor(this.elapsedTime / 60);
-
-    return this.level.maxFoxes + minutes * GAME_CONFIG.difficultyRamp.maxFoxesIncreasePerMinute;
+  #difficultyMetrics() {
+    return getDifficultyMetrics(this.level, this.elapsedTime);
   }
 
   #randomEdgePosition() {
