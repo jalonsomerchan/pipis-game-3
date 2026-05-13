@@ -6,6 +6,7 @@ export function createModeState(mode) {
   return {
     collectedPipis: 0,
     scaredFoxes: 0,
+    score: 0,
     comboScore: 0,
     comboStreak: 0,
     comboMultiplier: 1,
@@ -19,9 +20,16 @@ export function createModeState(mode) {
   };
 }
 
+export function getModeInitialChickens(mode, level) {
+  return mode.rules.initialChickens ?? level.initialChickens;
+}
+
 export function applyModeActions(mode, state, actions) {
   state.collectedPipis += actions.hatched;
   state.scaredFoxes += actions.scared;
+  state.score += Math.round(
+    actions.hatched * getPointsPerPipi(mode) + actions.scared * getPointsPerScare(mode),
+  );
 
   if (mode.id !== GAME_MODE_IDS.combo) return;
 
@@ -48,7 +56,7 @@ export function updateModeTimers(mode, state, deltaTime) {
 }
 
 export function getModeFinish(mode, state, { elapsedTime, chickens }) {
-  if (mode.id === GAME_MODE_IDS.timeAttack && elapsedTime >= mode.rules.durationSeconds) {
+  if (mode.rules.durationSeconds && elapsedTime >= mode.rules.durationSeconds) {
     return { outcome: 'time', feedback: 'mission' };
   }
 
@@ -73,10 +81,13 @@ export function getModeHud(mode, state, { elapsedTime }) {
     };
   }
 
-  if (mode.id === GAME_MODE_IDS.timeAttack) {
+  if (mode.id === GAME_MODE_IDS.timeAttack || mode.id === GAME_MODE_IDS.fever) {
     return {
       primary: { label: 'Restan', value: formatTime(mode.rules.durationSeconds - elapsedTime) },
-      secondary: { label: 'Pipis+', value: String(state.collectedPipis) },
+      secondary: {
+        label: mode.id === GAME_MODE_IDS.fever ? 'Puntos' : 'Pipis+',
+        value: String(mode.id === GAME_MODE_IDS.fever ? state.score : state.collectedPipis),
+      },
     };
   }
 
@@ -91,6 +102,23 @@ export function getModeHud(mode, state, { elapsedTime }) {
     return {
       primary: { label: 'Oleada', value: `${state.wave}/${mode.rules.maxWaves}` },
       secondary: { label: 'Pend.', value: String(state.pendingWaveFoxes) },
+    };
+  }
+
+  if (mode.id === GAME_MODE_IDS.onePipi) {
+    return {
+      primary: { label: 'Perfecto', value: formatTime(elapsedTime) },
+      secondary: { label: 'Puntos', value: String(state.score) },
+    };
+  }
+
+  if (mode.id === GAME_MODE_IDS.night || mode.id === GAME_MODE_IDS.peaceful) {
+    return {
+      primary: { label: 'Restan', value: formatTime(mode.rules.durationSeconds - elapsedTime) },
+      secondary: {
+        label: mode.id === GAME_MODE_IDS.peaceful ? 'Pipis+' : 'Puntos',
+        value: String(mode.id === GAME_MODE_IDS.peaceful ? state.collectedPipis : state.score),
+      },
     };
   }
 
@@ -139,6 +167,35 @@ export function updateWaveSpawns(mode, state, { deltaTime, foxesAlive, maxFoxes 
   return { count, speedMultiplier: getWaveSpeedMultiplier(mode, state.wave) };
 }
 
+export function shouldUseStandardFoxSpawns(mode) {
+  return Boolean(mode.rules.standardFoxSpawns) && !mode.rules.peaceful;
+}
+
+export function getEggSpawnInterval(mode, baseInterval) {
+  return Math.max(0.35, baseInterval * (mode.rules.eggSpawnMultiplier ?? 1));
+}
+
+export function getFoxSpawnInterval(mode, baseInterval) {
+  return Math.max(0.45, baseInterval * (mode.rules.foxSpawnMultiplier ?? 1));
+}
+
+export function getEggDuration(mode, baseDuration) {
+  return baseDuration * (mode.rules.eggDurationMultiplier ?? 1);
+}
+
+export function getFoxSpeed(mode, baseSpeed, extraMultiplier = 1) {
+  return baseSpeed * (mode.rules.foxSpeedMultiplier ?? 1) * extraMultiplier;
+}
+
+export function getModeVisuals(mode) {
+  if (mode.id !== GAME_MODE_IDS.night) return null;
+
+  return {
+    nightAlpha: mode.rules.nightOverlayAlpha,
+    spotlightRadius: mode.rules.spotlightRadius,
+  };
+}
+
 export function buildModeResult(mode, state, { elapsedTime, chickens, outcome }) {
   const base = {
     elapsedTime,
@@ -159,13 +216,13 @@ export function buildModeResult(mode, state, { elapsedTime, chickens, outcome })
     };
   }
 
-  if (mode.id === GAME_MODE_IDS.timeAttack) {
+  if (mode.id === GAME_MODE_IDS.timeAttack || mode.id === GAME_MODE_IDS.fever) {
     return {
       ...base,
       title: outcome === 'time' ? 'Tiempo agotado' : 'Las Pipis cayeron',
-      summary: `Has conseguido ${state.collectedPipis} Pipis antes del final.`,
-      detailLabel: 'Pipis conseguidas',
-      detailValue: String(state.collectedPipis),
+      summary: `Has conseguido ${state.collectedPipis} Pipis y ${state.score} puntos.`,
+      detailLabel: mode.id === GAME_MODE_IDS.fever ? 'Puntos fiebre' : 'Pipis conseguidas',
+      detailValue: String(mode.id === GAME_MODE_IDS.fever ? state.score : state.collectedPipis),
     };
   }
 
@@ -189,6 +246,36 @@ export function buildModeResult(mode, state, { elapsedTime, chickens, outcome })
     };
   }
 
+  if (mode.id === GAME_MODE_IDS.onePipi) {
+    return {
+      ...base,
+      title: 'Racha perfecta terminada',
+      summary: `Has aguantado ${formatTime(elapsedTime)} con una sola Pipi y ${state.score} puntos.`,
+      detailLabel: 'Tiempo perfecto',
+      detailValue: formatTime(elapsedTime),
+    };
+  }
+
+  if (mode.id === GAME_MODE_IDS.night) {
+    return {
+      ...base,
+      title: outcome === 'time' ? 'Noche completada' : 'Las Pipis cayeron',
+      summary: `Has sumado ${state.score} puntos nocturnos y ${state.collectedPipis} Pipis.`,
+      detailLabel: 'Puntos nocturnos',
+      detailValue: String(state.score),
+    };
+  }
+
+  if (mode.id === GAME_MODE_IDS.peaceful) {
+    return {
+      ...base,
+      title: 'Tiempo pacífico agotado',
+      summary: `Has conseguido ${state.collectedPipis} Pipis sin amenaza de zorros.`,
+      detailLabel: 'Pipis conseguidas',
+      detailValue: String(state.collectedPipis),
+    };
+  }
+
   return {
     ...base,
     title: 'Las Pipis cayeron',
@@ -196,6 +283,14 @@ export function buildModeResult(mode, state, { elapsedTime, chickens, outcome })
     detailLabel: 'Tiempo conseguido',
     detailValue: formatTime(elapsedTime),
   };
+}
+
+function getPointsPerPipi(mode) {
+  return mode.rules.pointsPerPipi ?? 1;
+}
+
+function getPointsPerScare(mode) {
+  return mode.rules.pointsPerScare ?? 0;
 }
 
 function getComboMultiplier(mode, streak) {
