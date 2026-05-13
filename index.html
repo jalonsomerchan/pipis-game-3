@@ -64,7 +64,7 @@
             </p>
             <div class="button-row">
               <button id="tutorial-done-play-button" class="primary-button" type="button">
-                Elegir nivel
+                Elegir modo
               </button>
               <button id="tutorial-done-menu-button" class="secondary-button" type="button">
                 Menú
@@ -72,9 +72,36 @@
             </div>
           </section>
 
+          <section class="panel level-panel" data-panel="modes" hidden>
+            <p class="eyebrow">Elige modo</p>
+            <h2>¿Cómo quieres jugar?</h2>
+            <button class="level-card" type="button" data-mode="collect-10">
+              <strong>Hasta conseguir 10 pipis</strong>
+              <span>Incuba 10 huevos para ganar antes de quedarte sin gallinas.</span>
+            </button>
+            <button class="level-card" type="button" data-mode="survival">
+              <strong>Supervivencia</strong>
+              <span>Aguanta el máximo tiempo posible mientras sube la presión.</span>
+            </button>
+            <button class="level-card" type="button" data-mode="time-attack">
+              <strong>Contrarreloj</strong>
+              <span>Consigue todas las Pipis que puedas antes de que termine el minuto.</span>
+            </button>
+            <button class="level-card" type="button" data-mode="combo">
+              <strong>Combo</strong>
+              <span>Encadena huevos y sustos para subir el multiplicador.</span>
+            </button>
+            <button class="level-card" type="button" data-mode="fox-waves">
+              <strong>Oleadas de zorros</strong>
+              <span>Supera oleadas progresivas con descansos cada vez más cortos.</span>
+            </button>
+            <button id="mode-back-button" class="ghost-button" type="button">Volver</button>
+          </section>
+
           <section class="panel level-panel" data-panel="levels" hidden>
             <p class="eyebrow">Elige dificultad</p>
-            <h2>Escoge tu ritmo</h2>
+            <h2 id="selected-mode-title">Escoge tu ritmo</h2>
+            <p id="selected-mode-description">El modo elegido ajusta el objetivo de la partida.</p>
             <button class="level-card" type="button" data-level="easy">
               <strong>Fácil</strong>
               <span>5 gallinas iniciales, huevos más frecuentes y zorros tranquilos.</span>
@@ -91,10 +118,14 @@
           </section>
 
           <section class="panel" data-panel="results" hidden>
-            <p class="eyebrow">Fin de la partida</p>
-            <h2>Las Pipis cayeron</h2>
-            <p>Tiempo conseguido: <strong id="result-time">0:00</strong></p>
-            <p>Mejor tiempo: <strong id="best-time">0:00</strong></p>
+            <p id="result-eyebrow" class="eyebrow">Fin de la partida</p>
+            <h2 id="result-title">Las Pipis cayeron</h2>
+            <p id="result-summary">Resumen de partida.</p>
+            <p>
+              <span id="result-time-label">Tiempo conseguido</span>:
+              <strong id="result-time">0:00</strong>
+            </p>
+            <p>Mejor supervivencia: <strong id="best-time">0:00</strong></p>
             <div class="button-row">
               <button id="retry-button" class="primary-button" type="button">Reintentar</button>
               <button id="menu-button" class="secondary-button" type="button">Menú</button>
