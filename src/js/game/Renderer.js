@@ -41,14 +41,14 @@ export class Renderer {
     this.#drawSceneVignette();
   }
 
-  drawHud({ time, chickens, eggs, foxes, levelLabel }) {
+  drawHud({ time, chickens, levelLabel, modeLabel = '', primary, secondary }) {
     const ctx = this.context;
 
     ctx.save();
     ctx.shadowColor = 'rgba(52, 24, 8, 0.3)';
     ctx.shadowBlur = 20;
-    ctx.fillStyle = 'rgba(255, 247, 223, 0.22)';
-    this.#roundedRect(16, 18, this.width - 32, 82, 28);
+    ctx.fillStyle = 'rgba(255, 247, 223, 0.2)';
+    this.#roundedRect(16, 18, this.width - 32, 108, 28);
     ctx.fill();
 
     ctx.shadowBlur = 0;
@@ -56,32 +56,63 @@ export class Renderer {
     ctx.lineWidth = 1;
     ctx.stroke();
 
-    ctx.fillStyle = 'rgba(33, 18, 8, 0.58)';
-    this.#roundedRect(26, 29, 152, 60, 20);
-    ctx.fill();
+    this.#drawHudPill(28, 29, 156, 'PIPIS', String(chickens));
+    this.#drawHudPill(194, 29, 154, 'TIEMPO', this.formatTime(time));
+    this.#drawHudPill(
+      358,
+      29,
+      this.width - 386,
+      primary?.label ?? 'NIVEL',
+      primary?.value ?? levelLabel,
+    );
 
-    ctx.fillStyle = '#fff9e8';
-    ctx.font = '900 17px ui-rounded, "Arial Rounded MT Bold", system-ui, sans-serif';
-    ctx.textAlign = 'left';
-    ctx.fillText(levelLabel, 42, 52);
-    ctx.font = '800 15px ui-rounded, system-ui, sans-serif';
-    ctx.fillText(`Pipis ${chickens}`, 42, 77);
+    const footer = [
+      levelLabel,
+      modeLabel,
+      secondary ? `${secondary.label}: ${secondary.value}` : '',
+    ]
+      .filter(Boolean)
+      .join(' · ');
+    ctx.fillStyle = 'rgba(255, 249, 232, 0.82)';
+    ctx.font = '900 12px ui-rounded, system-ui, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(footer, this.width / 2, 112);
+    ctx.restore();
+  }
 
-    this.#drawHudPill(196, 29, 'Huevos', eggs);
-    this.#drawHudPill(280, 29, 'Zorros', foxes);
-    this.#drawHudPill(364, 29, 'Tiempo', this.formatTime(time), 124);
+  drawModeOverlay(visuals) {
+    if (!visuals?.nightAlpha) return;
 
+    const ctx = this.context;
+    const radius = visuals.spotlightRadius ?? 170;
+    const gradient = ctx.createRadialGradient(
+      this.width / 2,
+      this.height * 0.56,
+      radius * 0.22,
+      this.width / 2,
+      this.height * 0.56,
+      radius,
+    );
+
+    ctx.save();
+    gradient.addColorStop(0, 'rgba(8, 16, 42, 0)');
+    gradient.addColorStop(0.72, `rgba(8, 16, 42, ${visuals.nightAlpha * 0.7})`);
+    gradient.addColorStop(1, `rgba(8, 16, 42, ${visuals.nightAlpha})`);
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, this.width, this.height);
     ctx.restore();
   }
 
   drawEgg(egg) {
     const ctx = this.context;
-    const pulse = 1 + Math.sin(egg.age * 8) * 0.05;
+    const pulse = 1 + Math.sin(egg.age * GAME_CONFIG.egg.pulseSpeed) * 0.05;
+    const wobble = Math.sin(egg.age * 10) * (egg.isWarning ? 0.08 : 0.035);
     const radius = egg.radius * pulse;
     const ringAlpha = egg.isWarning ? 0.72 : 0.38;
 
     ctx.save();
     ctx.translate(egg.x, egg.y);
+    ctx.rotate(wobble);
 
     ctx.strokeStyle = `rgba(255, 239, 171, ${ringAlpha})`;
     ctx.lineWidth = 5;
@@ -120,10 +151,11 @@ export class Renderer {
     const sourceX = col * sprite.frameWidth;
     const sourceY = row * sprite.frameHeight;
     const ctx = this.context;
+    const bounce = options.bounce ?? 0;
 
     ctx.save();
     ctx.globalAlpha = options.alpha ?? 1;
-    ctx.translate(x, y);
+    ctx.translate(x, y + bounce);
     if (options.flipX) ctx.scale(-1, 1);
     ctx.drawImage(
       sprite.image,
@@ -141,21 +173,40 @@ export class Renderer {
 
   drawScareEffect(effect) {
     const progress = 1 - effect.life / effect.duration;
-    const radius =
-      (effect.type === 'hatch' ? 14 : 22) + progress * (effect.type === 'hatch' ? 44 : 62);
     const alpha = Math.max(0, 1 - progress);
+    const style = this.#feedbackStyle(effect.type);
+    const radius = style.radius + progress * style.growth;
     const ctx = this.context;
 
     ctx.save();
-    ctx.strokeStyle = `rgba(255, 246, 166, ${alpha})`;
-    ctx.lineWidth = 7;
+    ctx.globalAlpha = alpha;
+    ctx.strokeStyle = style.stroke;
+    ctx.lineWidth = style.lineWidth;
     ctx.beginPath();
     ctx.arc(effect.x, effect.y, radius, 0, Math.PI * 2);
     ctx.stroke();
-    ctx.fillStyle = `rgba(${effect.type === 'hatch' ? '255, 214, 89' : '255, 94, 61'}, ${alpha * 0.8})`;
-    ctx.font = '900 30px ui-rounded, system-ui, sans-serif';
+
+    ctx.fillStyle = style.fill;
+    ctx.font = `${style.fontWeight} ${style.fontSize}px ui-rounded, system-ui, sans-serif`;
     ctx.textAlign = 'center';
-    ctx.fillText(effect.type === 'hatch' ? '+' : '!', effect.x, effect.y - radius * 0.45);
+    if (style.label) ctx.fillText(style.label, effect.x, effect.y - radius * 0.45);
+
+    for (let index = 0; index < style.particles; index += 1) {
+      const angle = (Math.PI * 2 * index) / style.particles;
+      const distance = radius * (0.35 + progress * 0.65);
+      const size = style.particleSize * (1 - progress * 0.35);
+
+      ctx.beginPath();
+      ctx.arc(
+        effect.x + Math.cos(angle) * distance,
+        effect.y + Math.sin(angle) * distance,
+        size,
+        0,
+        Math.PI * 2,
+      );
+      ctx.fill();
+    }
+
     ctx.restore();
   }
 
@@ -210,6 +261,120 @@ export class Renderer {
     return `${minutes}:${remainder}`;
   }
 
+  #drawHudPill(x, y, width, label, value) {
+    const ctx = this.context;
+
+    ctx.fillStyle = 'rgba(33, 18, 8, 0.58)';
+    this.#roundedRect(x, y, width, 56, 20);
+    ctx.fill();
+    ctx.fillStyle = '#ffd98a';
+    ctx.font = '900 10px ui-rounded, system-ui, sans-serif';
+    ctx.textAlign = 'left';
+    ctx.fillText(label.toUpperCase(), x + 16, y + 22);
+    ctx.fillStyle = '#fff9e8';
+    ctx.font = '950 20px ui-rounded, "Arial Rounded MT Bold", system-ui, sans-serif';
+    ctx.fillText(value, x + 16, y + 47);
+  }
+
+  #feedbackStyle(type = 'scare') {
+    const styles = {
+      scare: this.#style(
+        '!',
+        'rgba(255, 246, 166, 0.96)',
+        'rgba(255, 94, 61, 0.9)',
+        7,
+        22,
+        62,
+        8,
+        3.8,
+        30,
+      ),
+      hatch: this.#style(
+        '+',
+        'rgba(255, 246, 166, 0.96)',
+        'rgba(255, 214, 89, 0.94)',
+        7,
+        14,
+        44,
+        10,
+        3.4,
+        30,
+      ),
+      lost: this.#style(
+        '×',
+        'rgba(255, 130, 105, 0.92)',
+        'rgba(255, 104, 82, 0.9)',
+        6,
+        18,
+        54,
+        6,
+        4.4,
+        32,
+      ),
+      mission: this.#style(
+        '✓',
+        'rgba(187, 247, 208, 0.95)',
+        'rgba(134, 239, 172, 0.92)',
+        8,
+        38,
+        92,
+        14,
+        4.2,
+        42,
+      ),
+      gameOver: this.#style(
+        'fin',
+        'rgba(255, 180, 150, 0.84)',
+        'rgba(255, 120, 90, 0.9)',
+        8,
+        44,
+        130,
+        12,
+        4.4,
+        34,
+      ),
+      spawn: this.#style(
+        '!',
+        'rgba(255, 164, 92, 0.82)',
+        'rgba(255, 184, 105, 0.86)',
+        5,
+        12,
+        74,
+        8,
+        3.2,
+        24,
+      ),
+      trail: this.#style(
+        '',
+        'rgba(255, 245, 190, 0.24)',
+        'rgba(255, 245, 190, 0.32)',
+        3,
+        4,
+        16,
+        3,
+        2.4,
+        1,
+      ),
+    };
+
+    return styles[type] ?? styles.scare;
+  }
+
+  #style(label, stroke, fill, lineWidth, radius, growth, particles, particleSize, fontSize) {
+    return {
+      label,
+      stroke,
+      fill,
+      lineWidth,
+      radius,
+      growth,
+      particles,
+      particleSize,
+      fontSize,
+      fontWeight: 900,
+    };
+  }
+
   #roundedRect(x, y, width, height, radius) {
     this.context.beginPath();
     this.context.moveTo(x + radius, y);
@@ -218,20 +383,6 @@ export class Renderer {
     this.context.arcTo(x, y + height, x, y, radius);
     this.context.arcTo(x, y, x + width, y, radius);
     this.context.closePath();
-  }
-
-  #drawHudPill(x, y, icon, value, width = 72) {
-    const ctx = this.context;
-
-    ctx.fillStyle = 'rgba(33, 18, 8, 0.5)';
-    this.#roundedRect(x, y, width, 60, 20);
-    ctx.fill();
-    ctx.fillStyle = '#fff9e8';
-    ctx.font = '900 9px ui-rounded, system-ui, sans-serif';
-    ctx.textAlign = 'left';
-    ctx.fillText(icon.toUpperCase(), x + 13, y + 22);
-    ctx.font = '900 17px ui-rounded, system-ui, sans-serif';
-    ctx.fillText(String(value), x + 13, y + 43);
   }
 
   #wrapText(text, x, y, maxWidth, lineHeight) {

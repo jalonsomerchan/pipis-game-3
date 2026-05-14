@@ -19,9 +19,29 @@ Template moderno para crear juegos HTML5 con JavaScript puro, Canvas, Vite y Tai
 - Separación entre `update` y `render`.
 - Renderer con escalado Retina.
 - Input centralizado para teclado, pointer y touch.
+- Modos de juego configurables: 10 Pipis, supervivencia, contrarreloj, combo, oleadas, fiebre, un solo pipi, noche y pacífico.
 - Puntuación y récord local con `localStorage`.
 - Estructura modular preparada para escenas, entidades, assets y configuración.
 - Compatible con móvil y escritorio.
+
+## Modos de juego
+
+La configuración central vive en `src/js/config/gameModes.js` y las reglas reutilizables en
+`src/js/modes/modeRules.js`. `GameScene` usa esos helpers sin duplicar el game loop por modo.
+
+Modos disponibles:
+
+- **Hasta conseguir 10 pipis**: victoria al incubar 10 huevos.
+- **Supervivencia**: aguantar el máximo tiempo posible; guarda mejor tiempo local.
+- **Contrarreloj**: conseguir el máximo de Pipis en 60 segundos.
+- **Combo**: encadenar huevos y sustos para mantener racha y multiplicador.
+- **Oleadas de zorros**: superar oleadas progresivas con límites de zorros simultáneos.
+- **Fiebre**: partida corta de 30 segundos con más huevos, más ritmo y puntuación propia.
+- **Un solo pipi**: empieza con una sola Pipi y termina al primer daño.
+- **Noche**: reduce la visibilidad con un overlay accesible y compensa con más puntos.
+- **Pacífico**: modo sin zorros con tiempo límite para recoger huevos a tu ritmo.
+
+Para ajustar objetivos, tiempos, multiplicadores, oleadas o límites, edita `gameModes.js`.
 
 ## Instalación
 
@@ -68,6 +88,16 @@ npm run format:check
 npm run format
 ```
 
+## Checks smoke
+
+```bash
+npm run check:balance
+npm run check:feedback
+npm run check:modes
+```
+
+`check:modes` valida la configuración mínima de cada modo, límites de entidades, duraciones, reglas especiales de modos extra y que la escena pueda inicializarse y reiniciarse con cada combinación de modo y dificultad.
+
 ## Estructura
 
 ```txt
@@ -81,11 +111,14 @@ src/
 └── js/
     ├── app.js
     ├── config/
-    │   └── gameConfig.js
+    │   ├── gameConfig.js
+    │   └── gameModes.js
     ├── game/
     │   ├── Game.js
     │   ├── Input.js
     │   └── Renderer.js
+    ├── modes/
+    │   └── modeRules.js
     ├── scenes/
     │   └── GameScene.js
     └── utils/

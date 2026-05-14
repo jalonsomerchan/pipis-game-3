@@ -10,7 +10,10 @@
     "preview": "vite preview",
     "lint": "eslint .",
     "format": "prettier . --write",
-    "format:check": "prettier . --check"
+    "format:check": "prettier . --check",
+    "check:balance": "node scripts/check-balance.js",
+    "check:feedback": "node scripts/check-feedback.js",
+    "check:modes": "node scripts/check-modes.js"
   },
   "keywords": [
     "html5",

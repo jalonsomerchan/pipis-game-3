@@ -1,7 +1,9 @@
 import { loadSprites } from '../assets/loadSprites.js';
 import { GAME_CONFIG } from '../config/gameConfig.js';
+import { DEFAULT_GAME_MODE_ID, getGameMode } from '../config/gameModes.js';
 import { GameScene } from '../scenes/GameScene.js';
 import { readNumber, writeNumber } from '../utils/storage.js';
+import { Feedback } from './Feedback.js';
 import { Input } from './Input.js';
 import { Renderer } from './Renderer.js';
 
@@ -15,6 +17,8 @@ export class Game {
     this.elements = elements;
     this.renderer = new Renderer(elements.canvas, GAME_CONFIG.canvas);
     this.input = new Input(elements.canvas);
+    this.feedback = new Feedback();
+    this.selectedModeKey = DEFAULT_GAME_MODE_ID;
     this.bestTime = readNumber(GAME_CONFIG.storage.bestTimeKey);
 
     this.#bindEvents();
@@ -34,8 +38,9 @@ export class Game {
           input: this.input,
           sprites: this.sprites,
           onStats: (stats) => this.#setStats(stats),
-          onGameOver: (time) => this.#finish(time),
+          onGameOver: (result) => this.#finish(result),
           onTutorialComplete: () => this.#finishTutorial(),
+          onFeedback: (event) => this.#handleFeedback(event),
         });
         this.#renderIdleScene();
         this.#showMenu();
@@ -48,8 +53,9 @@ export class Game {
   startLevel(levelKey) {
     if (!this.scene) return;
 
+    this.feedback.prime();
     this.stop();
-    this.scene.reset(levelKey);
+    this.scene.reset(levelKey, this.selectedModeKey);
     this.elements.overlay.hidden = true;
     this.elements.pauseButton.hidden = false;
     this.#mode = 'playing';
@@ -61,6 +67,7 @@ export class Game {
   startTutorial() {
     if (!this.scene) return;
 
+    this.feedback.prime();
     this.stop();
     this.scene.resetTutorial();
     this.elements.overlay.hidden = true;
@@ -74,6 +81,7 @@ export class Game {
   resume() {
     if (!this.scene || !this.#mode.startsWith('paused')) return;
 
+    this.feedback.prime();
     this.elements.overlay.hidden = true;
     this.elements.pauseButton.hidden = false;
     this.#mode = this.#mode === 'paused-tutorial' ? 'tutorial-playing' : 'playing';
@@ -108,20 +116,28 @@ export class Game {
   }
 
   #bindEvents() {
-    this.elements.playButton.addEventListener('click', () => this.#showLevelSelect());
+    this.elements.playButton.addEventListener('click', () => this.#showModeSelect());
     this.elements.tutorialButton.addEventListener('click', () => this.startTutorial());
-    this.elements.tutorialDonePlayButton.addEventListener('click', () => this.#showLevelSelect());
+    this.elements.tutorialDonePlayButton.addEventListener('click', () => this.#showModeSelect());
     this.elements.tutorialDoneMenuButton.addEventListener('click', () => this.#showMenu());
     this.elements.shareButton.addEventListener('click', () => {
       this.#share();
+    });
+
+    this.elements.modeButtons.forEach((button) => {
+      button.addEventListener('click', () => {
+        this.selectedModeKey = button.dataset.mode;
+        this.#showLevelSelect();
+      });
     });
 
     this.elements.levelButtons.forEach((button) => {
       button.addEventListener('click', () => this.startLevel(button.dataset.level));
     });
 
-    this.elements.backButton.addEventListener('click', () => this.#showMenu());
-    this.elements.retryButton.addEventListener('click', () => this.#showLevelSelect());
+    this.elements.backButton.addEventListener('click', () => this.#showModeSelect());
+    this.elements.modeBackButton.addEventListener('click', () => this.#showMenu());
+    this.elements.retryButton.addEventListener('click', () => this.#showModeSelect());
     this.elements.menuButton.addEventListener('click', () => this.#showMenu());
     this.elements.pauseButton.addEventListener('click', () => this.#pause());
     this.elements.resumeButton.addEventListener('click', () => this.resume());
@@ -135,23 +151,54 @@ export class Game {
     });
   }
 
-  #finish(time) {
+  #finish(result) {
     this.stop();
 
-    if (time > this.bestTime) {
-      this.bestTime = time;
-      writeNumber(GAME_CONFIG.storage.bestTimeKey, time);
+    const isRecord = result.tracksBestTime && result.elapsedTime > this.bestTime;
+    if (isRecord) {
+      this.bestTime = result.elapsedTime;
+      writeNumber(GAME_CONFIG.storage.bestTimeKey, result.elapsedTime);
+      this.#handleFeedback({ type: 'record' });
+      this.#announce('¡Nuevo récord de supervivencia!');
     }
 
-    this.elements.resultTime.textContent = this.renderer.formatTime(time);
+    this.elements.resultEyebrow.textContent = this.#resultEyebrow(result, isRecord);
+    this.elements.resultTitle.textContent = result.title;
+    this.elements.resultSummary.textContent = result.summary;
+    this.elements.resultTimeLabel.textContent = result.detailLabel;
+    this.elements.resultTime.textContent = result.detailValue;
     this.elements.bestTime.textContent = this.renderer.formatTime(this.bestTime);
     this.elements.pauseButton.hidden = true;
     this.#mode = 'results';
-    this.#setOverlayMode('results');
+    this.#setOverlayMode('results', this.#resultFeedback(result, isRecord));
   }
 
   #setStats() {
     // Stats are rendered in-canvas so the game can run fullscreen without an external top bar.
+  }
+
+  #handleFeedback({ type }) {
+    this.feedback.play(type);
+    this.#announce(this.#feedbackMessage(type));
+  }
+
+  #feedbackMessage(type) {
+    const messages = {
+      scare: 'Zorro espantado.',
+      hatch: 'Huevo incubado. Nueva Pipi.',
+      lost: 'Has perdido una Pipi.',
+      mission: 'Objetivo completado.',
+      record: 'Nuevo récord.',
+      gameOver: 'Fin de la partida.',
+    };
+
+    return messages[type] ?? '';
+  }
+
+  #announce(message) {
+    if (!this.elements.feedbackStatus || !message) return;
+
+    this.elements.feedbackStatus.textContent = message;
   }
 
   #renderIdleScene() {
@@ -172,7 +219,16 @@ export class Game {
     this.#setOverlayMode('menu');
   }
 
+  #showModeSelect() {
+    this.elements.pauseButton.hidden = true;
+    this.#mode = 'modes';
+    this.#setOverlayMode('modes');
+  }
+
   #showLevelSelect() {
+    const mode = getGameMode(this.selectedModeKey);
+    this.elements.selectedModeTitle.textContent = mode.label;
+    this.elements.selectedModeDescription.textContent = mode.description;
     this.elements.pauseButton.hidden = true;
     this.#mode = 'levels';
     this.#setOverlayMode('levels');
@@ -191,11 +247,26 @@ export class Game {
     this.stop();
     this.elements.pauseButton.hidden = true;
     this.#mode = 'tutorial-done';
-    this.#setOverlayMode('tutorialDone');
+    this.#setOverlayMode('tutorialDone', 'mission');
   }
 
   #isPlayingMode() {
     return this.#mode === 'playing' || this.#mode === 'tutorial-playing';
+  }
+
+  #resultEyebrow(result, isRecord) {
+    if (isRecord) return 'Nuevo récord';
+    if (result.outcome === 'victory') return 'Victoria';
+    if (result.outcome === 'time') return 'Fin por tiempo';
+
+    return 'Fin de la partida';
+  }
+
+  #resultFeedback(result, isRecord) {
+    if (isRecord) return 'record';
+    if (result.outcome === 'victory' || result.outcome === 'time') return 'mission';
+
+    return 'game-over';
   }
 
   async #share() {
@@ -221,9 +292,10 @@ export class Game {
     }
   }
 
-  #setOverlayMode(mode) {
+  #setOverlayMode(mode, feedback = '') {
     this.elements.overlay.hidden = false;
     this.elements.overlay.dataset.mode = mode;
+    this.elements.overlay.dataset.feedback = feedback;
 
     for (const panel of this.elements.panels) {
       panel.hidden = panel.dataset.panel !== mode;
