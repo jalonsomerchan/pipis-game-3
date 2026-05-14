@@ -108,7 +108,9 @@ export class GameScene {
         renderer.drawDangerPulse(chicken, GAME_CONFIG.effects.dangerPulseDuration);
       }
 
-      renderer.drawSprite(this.sprites.chicken, chicken.x, chicken.y, 92, chicken.frameIndex);
+      renderer.drawSprite(this.sprites.chicken, chicken.x, chicken.y, 92, chicken.frameIndex, {
+        flipX: chicken.facingRight,
+      });
     }
 
     for (const fox of this.foxes) {
