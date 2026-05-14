@@ -8,6 +8,7 @@ export class Chicken {
     this.radius = GAME_CONFIG.chicken.radius;
     this.animationTime = randomBetween(0, 1);
     this.dangerPulse = 0;
+    this.facingRight = false;
     this.#chooseDirection();
   }
 
@@ -48,6 +49,7 @@ export class Chicken {
 
     this.vx = Math.cos(angle) * speed;
     this.vy = Math.sin(angle) * speed;
+    this.facingRight = this.vx > 0;
     this.turnTimer = randomBetween(
       GAME_CONFIG.chicken.turnIntervalMin,
       GAME_CONFIG.chicken.turnIntervalMax,
